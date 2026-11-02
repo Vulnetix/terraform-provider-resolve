@@ -1,0 +1,34 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+### Minimal
+
+The arguments the kind requires, and nothing else.
+
+{{ tffile (printf "examples/resources/%s/minimal.tf" .Name) }}
+
+### Advanced
+
+Every argument the kind supports. A secret is a write-only `*_wo` argument fed from an ephemeral variable, so it never reaches the plan or the state; change `*_wo_version` to send a new value.
+
+{{ tffile (printf "examples/resources/%s/advanced.tf" .Name) }}
+
+{{ .SchemaMarkdown | trimspace }}
+{{- if .HasImport }}
+
+## Import
+
+Import an existing object by its name (`metadata.name`). The first read after an import fills in every field the server holds.
+
+{{ codefile "shell" .ImportFile }}
+{{- end }}

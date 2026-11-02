@@ -120,7 +120,7 @@ func (r *kindResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 	resp.Schema = schema.Schema{
 		MarkdownDescription: r.spec.Description + deps + "\n\nManages the `" + r.spec.Kind + "` config kind through `/config/objects/" + r.spec.Kind + "/{name}`. " +
 			"Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.\n\n" +
-			"The server merges: an argument removed from the configuration is no longer managed, and keeps its last value on the server. Destroying the resource deletes the object.",
+			"Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `MalwareIoc` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.",
 		Attributes: attrs,
 	}
 }
