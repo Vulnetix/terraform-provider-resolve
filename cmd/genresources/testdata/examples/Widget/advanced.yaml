@@ -1,0 +1,39 @@
+apiVersion: vulnetix.com/v1
+kind: Widget
+metadata:
+  name: 1st-widget
+  labels:
+    team: platform
+  annotations:
+    ticket/url: https://tickets.example/1
+spec:
+  color: blue
+  enabled: true
+  env:
+    REGION: ap-southeast-2
+  extra:
+    b: 1
+    a: [true, "${x}"]
+  match: "${literal} %{ also }"
+  nested:
+    deepFlag: true
+    webhookSecret:
+      valueFrom:
+        env: WEBHOOK_SECRET
+    within30Days: 2026-12-31
+  ratio: 0.5
+  rules:
+    - purl: pkg:npm/left-pad
+      reason: component_not_present
+  size: 3
+  tags: [a, 7]
+  token:
+    valueFrom:
+      env: TOKEN
+---
+apiVersion: vulnetix.com/v1
+kind: Widget
+metadata:
+  name: 1st-widget
+spec:
+  color: green

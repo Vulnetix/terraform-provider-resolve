@@ -50,7 +50,7 @@ var collections = map[string]collection{
 	"ApiSpecSource.spec.tags": {true, "apispecsource.go stores the tags as given and reads them back in " +
 		"the same order; free labels, not deduplicated."},
 
-	"VexSource.spec.scope.repos":         {false, "uniqueItems: the repositories in scope."},
+	"VexSource.spec.scope.repos":          {false, "uniqueItems: the repositories in scope."},
 	"VexSource.spec.scope.products":       {false, "uniqueItems: the TEA products in scope."},
 	"VexSource.spec.trust.allowedAuthors": {false, "uniqueItems: an allow list of authors."},
 	"VexSource.spec.git.paths": {false, "globs selecting documents; every match is read, so the order " +

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -107,8 +108,17 @@ func (r *kindResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 		ElementType:         types.StringType,
 		Optional:            true,
 	}
+	deps := ""
+	if len(r.spec.DependsOn) > 0 {
+		names := make([]string, len(r.spec.DependsOn))
+		for i, k := range r.spec.DependsOn {
+			names[i] = "`" + k + "`"
+		}
+		deps = "\n\nAn object of this kind can reference " + strings.Join(names, ", ") +
+			" objects. Reference those resources' attributes, or add `depends_on`, so Terraform applies them first."
+	}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: r.spec.Description + "\n\nManages the `" + r.spec.Kind + "` config kind through `/config/objects/" + r.spec.Kind + "/{name}`. " +
+		MarkdownDescription: r.spec.Description + deps + "\n\nManages the `" + r.spec.Kind + "` config kind through `/config/objects/" + r.spec.Kind + "/{name}`. " +
 			"Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.\n\n" +
 			"The server merges: an argument removed from the configuration is no longer managed, and keeps its last value on the server. Destroying the resource deletes the object.",
 		Attributes: attrs,

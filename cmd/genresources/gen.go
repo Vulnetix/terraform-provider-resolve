@@ -67,7 +67,10 @@ type kindOut struct {
 	Kind, TypeName, Ident string
 	Source                []byte
 	// Served kinds are applied by the engine; see served.go.
-	Served bool
+	Served    bool
+	Singleton bool
+	// Tree is the attribute tree, for writing examples.
+	Tree []hfield
 }
 
 type generator struct {
@@ -80,6 +83,12 @@ type generator struct {
 	// used, so a test can find stale ones.
 	undecided []string
 	decided   map[string]bool
+
+	// The kind being generated, its x-vulnetix annotations (nil before
+	// v1.3.0) and the secret paths found in its schema.
+	kind    string
+	ann     *annotations
+	secrets []string
 }
 
 // ordered decides list or set for the array at where.
@@ -128,9 +137,19 @@ func (g *generator) generate(kind string) (*kindOut, error) {
 		spec = &node{}
 	}
 
+	ann := g.set.annotationsOf(kind)
+	if ann != nil && ann.Singleton {
+		singleton = true
+	}
+	g.ann, g.kind, g.secrets = ann, kind, nil
+
 	ident := lowerCamel(kind)
 	var attrs, fields bytes.Buffer
-	if err := g.object(&attrs, &fields, spec, kind+".spec", true, false); err != nil {
+	var tree []hfield
+	if err := g.object(&attrs, &fields, &tree, spec, kind+".spec", true, false); err != nil {
+		return nil, err
+	}
+	if err := g.checkSecrets(); err != nil {
 		return nil, err
 	}
 
@@ -146,6 +165,9 @@ func (g *generator) generate(kind string) (*kindOut, error) {
 	if !singleton && pattern != "" {
 		fmt.Fprintf(&src, "NamePattern: %s,\n", strconv.Quote(pattern))
 	}
+	if ann != nil && len(ann.DependsOn) > 0 {
+		fmt.Fprintf(&src, "DependsOn: %#v,\n", ann.DependsOn)
+	}
 	fmt.Fprintf(&src, "Attributes: func() map[string]schema.Attribute {\nreturn map[string]schema.Attribute{\n%s}\n},\n", attrs.String())
 	fmt.Fprintf(&src, "Fields: []field{\n%s},\n}\n", fields.String())
 	src.WriteString(keepImports)
@@ -154,7 +176,7 @@ func (g *generator) generate(kind string) (*kindOut, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: format generated code: %w\n%s", kind, err, src.String())
 	}
-	return &kindOut{Kind: kind, TypeName: snake(kind), Ident: ident, Source: out}, nil
+	return &kindOut{Kind: kind, TypeName: snake(kind), Ident: ident, Source: out, Singleton: singleton, Tree: tree}, nil
 }
 
 const imports = `import (
@@ -192,7 +214,7 @@ var (
 // object writes the attributes and fields of an object's properties.
 // underList is set inside list or map elements, where a secret cannot be
 // write-only: Terraform has no write-only element.
-func (g *generator) object(attrs, fields *bytes.Buffer, obj *node, where string, top, underList bool) error {
+func (g *generator) object(attrs, fields *bytes.Buffer, tree *[]hfield, obj *node, where string, top, underList bool) error {
 	names := make([]string, 0, len(obj.Properties))
 	for k := range obj.Properties {
 		names = append(names, k)
@@ -214,7 +236,7 @@ func (g *generator) object(attrs, fields *bytes.Buffer, obj *node, where string,
 			return fmt.Errorf("%s: %s and %s both map to %s", where, other, jsonName, attr)
 		}
 		seen[attr] = jsonName
-		if err := g.property(attrs, fields, prop, jsonName, attr, where+"."+jsonName, obj.requires(jsonName), underList); err != nil {
+		if err := g.property(attrs, fields, tree, prop, jsonName, attr, where+"."+jsonName, obj.requires(jsonName), underList); err != nil {
 			return err
 		}
 	}
@@ -228,7 +250,7 @@ func optReq(required bool) string {
 	return "Optional: true,\n"
 }
 
-func (g *generator) property(attrs, fields *bytes.Buffer, prop *node, jsonName, attr, where string, required, underList bool) error {
+func (g *generator) property(attrs, fields *bytes.Buffer, tree *[]hfield, prop *node, jsonName, attr, where string, required, underList bool) error {
 	secret, err := g.set.isValueFrom(prop)
 	if err != nil {
 		return fmt.Errorf("%s: %w", where, err)
@@ -238,11 +260,15 @@ func (g *generator) property(attrs, fields *bytes.Buffer, prop *node, jsonName, 
 		return fmt.Errorf("%s: %w", where, err)
 	}
 	desc := describe(r)
+	if env := g.celEnv(where); env != "" {
+		desc = strings.TrimSpace(desc + " A CEL expression, evaluated in the `" + env + "` environment.")
+	}
 
 	if secret {
 		if underList {
 			return fmt.Errorf("%s: a valueFrom secret inside a list or map cannot be write-only", where)
 		}
+		g.secrets = append(g.secrets, docPath(where))
 		wo, ver := attr+"_wo", attr+"_wo_version"
 		fmt.Fprintf(attrs, "%q: schema.StringAttribute{\nMarkdownDescription: %s,\n%sWriteOnly: true,\nSensitive: true,\n},\n",
 			wo, strconv.Quote(strings.TrimSpace(desc+" Write-only: never stored in state. Needs Terraform 1.11 or later. Change `"+ver+"` to send a new value.")), optReq(required))
@@ -250,6 +276,7 @@ func (g *generator) property(attrs, fields *bytes.Buffer, prop *node, jsonName, 
 			ver, strconv.Quote("Any number. Change it to send `"+wo+"` again; Terraform cannot see a write-only value change."))
 		fmt.Fprintf(fields, "{Attr: %q, JSON: %q, WriteOnly: true, Version: %q},\n", wo, jsonName, ver)
 		fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Local: true},\n", ver, jsonName)
+		*tree = append(*tree, hfield{Attr: attr, JSON: jsonName, Shape: shapeSecret})
 		return nil
 	}
 
@@ -260,9 +287,11 @@ func (g *generator) property(attrs, fields *bytes.Buffer, prop *node, jsonName, 
 	switch {
 	case isObject(r) && len(r.Properties) > 0:
 		var ca, cf bytes.Buffer
-		if err := g.object(&ca, &cf, r, where, false, underList); err != nil {
+		var ct []hfield
+		if err := g.object(&ca, &cf, &ct, r, where, false, underList); err != nil {
 			return err
 		}
+		*tree = append(*tree, hfield{Attr: attr, JSON: jsonName, Shape: shapeObject, Children: ct})
 		fmt.Fprintf(attrs, "%q: schema.SingleNestedAttribute{\n%sAttributes: map[string]schema.Attribute{\n%s},\n},\n", attr, head, ca.String())
 		fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: fieldObject, Children: []field{\n%s}},\n", attr, jsonName, cf.String())
 		return nil
@@ -274,9 +303,11 @@ func (g *generator) property(attrs, fields *bytes.Buffer, prop *node, jsonName, 
 		}
 		if isObject(el) && len(el.Properties) > 0 {
 			var ca, cf bytes.Buffer
-			if err := g.object(&ca, &cf, el, where+"{}", false, true); err != nil {
+			var ct []hfield
+			if err := g.object(&ca, &cf, &ct, el, where+"{}", false, true); err != nil {
 				return err
 			}
+			*tree = append(*tree, hfield{Attr: attr, JSON: jsonName, Shape: shapeMapObject, Children: ct})
 			fmt.Fprintf(attrs, "%q: schema.MapNestedAttribute{\n%sNestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{\n%s}},\n},\n", attr, head, ca.String())
 			fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: fieldMapObject, Children: []field{\n%s}},\n", attr, jsonName, cf.String())
 			return nil
@@ -284,6 +315,7 @@ func (g *generator) property(attrs, fields *bytes.Buffer, prop *node, jsonName, 
 		if ek, et, ok := scalar(el); ok {
 			fmt.Fprintf(attrs, "%q: schema.MapAttribute{\n%sElementType: %s,\n},\n", attr, head, et)
 			fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: fieldMap, Elem: %s},\n", attr, jsonName, ek)
+			*tree = append(*tree, hfield{Attr: attr, JSON: jsonName, Shape: shapeMap, Elem: ek})
 			return nil
 		}
 
@@ -304,21 +336,25 @@ func (g *generator) property(attrs, fields *bytes.Buffer, prop *node, jsonName, 
 		lv := sizeValidators(r, coll)
 		if nested {
 			var ca, cf bytes.Buffer
-			if err := g.object(&ca, &cf, el, where+"[]", false, true); err != nil {
+			var ct []hfield
+			if err := g.object(&ca, &cf, &ct, el, where+"[]", false, true); err != nil {
 				return err
 			}
+			*tree = append(*tree, hfield{Attr: attr, JSON: jsonName, Shape: shapeListObject, Children: ct})
 			fmt.Fprintf(attrs, "%q: schema.%sNestedAttribute{\n%s%sNestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{\n%s}},\n},\n", attr, coll, head, lv, ca.String())
 			fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: %sObject, Children: []field{\n%s}},\n", attr, jsonName, fk, cf.String())
 			return nil
 		}
 		fmt.Fprintf(attrs, "%q: schema.%sAttribute{\n%s%sElementType: %s,\n},\n", attr, coll, head, lv, et)
 		fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: %s, Elem: %s},\n", attr, jsonName, fk, ek)
+		*tree = append(*tree, hfield{Attr: attr, JSON: jsonName, Shape: shapeList, Elem: ek})
 		return nil
 
 	default:
 		if ek, _, ok := scalar(r); ok {
 			fmt.Fprintf(attrs, "%q: schema.%s{\n%s%s},\n", attr, scalarAttr(ek), head, scalarValidators(r, ek))
 			fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: %s},\n", attr, jsonName, ek)
+			*tree = append(*tree, hfield{Attr: attr, JSON: jsonName, Shape: shapeScalar, Elem: ek})
 			return nil
 		}
 	}
@@ -329,6 +365,7 @@ func (g *generator) property(attrs, fields *bytes.Buffer, prop *node, jsonName, 
 	fmt.Fprintf(attrs, "%q: schema.StringAttribute{\n%sCustomType: jsontypes.NormalizedType{},\n},\n",
 		attr, fmt.Sprintf("MarkdownDescription: %s,\n%s", strconv.Quote(strings.TrimSpace(desc+" A JSON-encoded value; use jsonencode().")), optReq(required)))
 	fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: fieldJSON},\n", attr, jsonName)
+	*tree = append(*tree, hfield{Attr: attr, JSON: jsonName, Shape: shapeJSON})
 	return nil
 }
 
@@ -535,4 +572,51 @@ func registry(version, varName string, kinds []*kindOut) ([]byte, error) {
 	}
 	b.WriteString("}\n")
 	return format.Source(b.Bytes())
+}
+
+// docPath turns a generator location (Kind.spec.auth.token, with [] and {}
+// marking list elements and map values) into the dotted document path
+// x-vulnetix uses (spec.auth.token).
+func docPath(where string) string {
+	_, p, _ := strings.Cut(where, ".")
+	return strings.NewReplacer("[]", "", "{}", "").Replace(p)
+}
+
+// celEnv is the CEL environment x-vulnetix.celFields gives the property at
+// where, or "" when it is not a CEL expression.
+func (g *generator) celEnv(where string) string {
+	if g.ann == nil {
+		return ""
+	}
+	p := docPath(where)
+	for _, c := range g.ann.CelFields {
+		if strings.NewReplacer("[]", "", "[*]", "", "{}", "").Replace(c.Path) == p {
+			return c.Env
+		}
+	}
+	return ""
+}
+
+// checkSecrets compares the valueFrom fields found in the schema with
+// x-vulnetix.secrets: a secret the annotation names but the generator would
+// put in state, or the other way round, is refused.
+func (g *generator) checkSecrets() error {
+	if g.ann == nil {
+		return nil
+	}
+	found := map[string]bool{}
+	for _, s := range g.secrets {
+		found[s] = true
+	}
+	for _, s := range g.ann.Secrets {
+		p := strings.NewReplacer("[]", "", "[*]", "", "{}", "").Replace(s)
+		if !found[p] {
+			return fmt.Errorf("%s: x-vulnetix.secrets names %s, which is not a valueFrom field", g.kind, s)
+		}
+		delete(found, p)
+	}
+	for s := range found {
+		return fmt.Errorf("%s: %s is a valueFrom field missing from x-vulnetix.secrets", g.kind, s)
+	}
+	return nil
 }

@@ -35,6 +35,8 @@ type node struct {
 	OneOf       []*node          `json:"oneOf"`
 	AnyOf       []*node          `json:"anyOf"`
 	Defs        map[string]*node `json:"$defs"`
+	// X is the root x-vulnetix annotation (config-schemas v1.3.0 and later).
+	X *annotations `json:"x-vulnetix"`
 
 	// file is the schema file this node was read from, for resolving its
 	// local "#/..." refs.
@@ -384,4 +386,46 @@ func (s *schemaSet) isValueFrom(n *node) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// annotations is a kind schema's x-vulnetix block: what the server does with
+// the kind, beyond the shape of its documents.
+type annotations struct {
+	// ValidateOnly kinds are checked but not stored; plan answers
+	// not_stored. They get no resource.
+	ValidateOnly bool `json:"validateOnly"`
+	// Singleton kinds have one object per tenant, named default.
+	Singleton bool `json:"singleton"`
+	// DependsOn are the kinds an object of this kind can reference, applied
+	// first.
+	DependsOn []string `json:"dependsOn"`
+	// Secrets are the dotted paths (spec.apiKey) of valueFrom fields.
+	Secrets []string `json:"secrets"`
+	// CelFields are the CEL expressions: a dotted path ([] for list
+	// elements) and the CEL environment it is evaluated in.
+	CelFields []celField `json:"celFields"`
+}
+
+type celField struct {
+	Path string `json:"path"`
+	Env  string `json:"env"`
+}
+
+// annotationsOf returns a kind's x-vulnetix block, or nil for a release
+// that predates them.
+func (s *schemaSet) annotationsOf(kind string) *annotations {
+	if n, ok := s.files[kind+".schema.json"]; ok {
+		return n.X
+	}
+	return nil
+}
+
+// isValidateOnly reads x-vulnetix.validateOnly, falling back to the list
+// kept for releases without annotations.
+func (s *schemaSet) isValidateOnly(kind string) bool {
+	if a := s.annotationsOf(kind); a != nil {
+		return a.ValidateOnly
+	}
+	_, ok := validateOnly[kind]
+	return ok
 }

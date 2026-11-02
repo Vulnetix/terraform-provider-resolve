@@ -1,0 +1,6 @@
+apiVersion: vulnetix.com/v1
+kind: Widget
+metadata:
+  name: w1
+spec:
+  color: red

@@ -18,6 +18,8 @@ type kindSpec struct {
 	Singleton bool
 	// NamePattern is the metadata.name pattern for non-singleton kinds.
 	NamePattern string
+	// DependsOn are the kinds this kind can reference (x-vulnetix.dependsOn).
+	DependsOn []string
 	// Attributes returns the spec attributes. They sit at the top level of
 	// the resource beside name, labels and annotations.
 	Attributes func() map[string]schema.Attribute

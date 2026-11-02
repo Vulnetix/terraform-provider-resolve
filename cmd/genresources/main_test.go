@@ -212,3 +212,66 @@ func TestServedKindsHaveSchemas(t *testing.T) {
 		}
 	}
 }
+
+func TestExampleHCL(t *testing.T) {
+	set, err := loadSchemas(os.DirFS("testdata/schemas"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	o, err := (&generator{set: set, version: "test"}).generate("Widget")
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+	if err := writeExamples(out, "testdata/examples", o); err != nil {
+		t.Fatal(err)
+	}
+	read := func(name string) string {
+		b, err := os.ReadFile(filepath.Join(out, "vulnetix_widget", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	minimal := read("minimal.tf")
+	if !strings.Contains(minimal, `resource "vulnetix_widget" "w1" {`) || !strings.Contains(minimal, `color = "red"`) {
+		t.Errorf("minimal.tf:\n%s", minimal)
+	}
+	adv := read("advanced.tf")
+	for _, want := range []string{
+		`resource "vulnetix_widget" "r_1st_widget" {`,
+		`resource "vulnetix_widget" "r_1st_widget_2" {`,
+		`variable "r_1st_widget_token" {`,
+		`variable "r_1st_widget_nested_webhook_secret" {`,
+		`ephemeral = true`,
+		`token_wo         = var.r_1st_widget_token`,
+		`token_wo_version = 1`,
+		`webhook_secret_wo         = var.r_1st_widget_nested_webhook_secret`,
+		`within_30_days            = "2026-12-31"`,
+		`match = "$${literal} %%{ also }"`,
+		`extra = jsonencode({`,
+		`= ["a", "7"]`,
+		`REGION = "ap-southeast-2"`,
+		`"ticket/url" = "https://tickets.example/1"`,
+		`purl   = "pkg:npm/left-pad"`,
+		`ratio = 0.5`,
+	} {
+		if !strings.Contains(adv, want) {
+			t.Errorf("advanced.tf lacks %s:\n%s", want, adv)
+		}
+	}
+	if imp := read("import.sh"); !strings.Contains(imp, "terraform import vulnetix_widget.w1 w1") {
+		t.Errorf("import.sh: %s", imp)
+	}
+
+	bad := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(bad, "Widget"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range exampleVariants {
+		_ = os.WriteFile(filepath.Join(bad, "Widget", v+".yaml"), []byte("kind: Widget\nmetadata: {name: x}\nspec: {nope: 1}\n"), 0o644)
+	}
+	if err := writeExamples(t.TempDir(), bad, o); err == nil || !strings.Contains(err.Error(), "spec.nope: no such argument") {
+		t.Errorf("unknown key: %v", err)
+	}
+}

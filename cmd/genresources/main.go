@@ -45,6 +45,8 @@ func run(args []string) error {
 	suffix := fl.String("suffix", "", "file name suffix before .go, such as _test")
 	varName := fl.String("var", "generatedKinds", "name of the generated kind list")
 	version := fl.String("version", "", "config-schemas version for the header (default: from the build)")
+	examplesOut := fl.String("examples-out", "", "also write each served kind's examples under this directory (examples/resources)")
+	examplesSrc := fl.String("examples", "", "read config-schemas examples from this directory (default: the required module's examples)")
 	if err := fl.Parse(args); err != nil {
 		return err
 	}
@@ -83,7 +85,7 @@ func run(args []string) error {
 	allServed := *dir != ""
 	var outs []*kindOut
 	for _, k := range kinds {
-		if _, skip := validateOnly[k]; skip {
+		if set.isValidateOnly(k) {
 			continue
 		}
 		o, err := g.generate(k)
@@ -100,7 +102,28 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(*out, "zz_generated_kinds"+*suffix+".go"), reg, 0o644)
+	if err := os.WriteFile(filepath.Join(*out, "zz_generated_kinds"+*suffix+".go"), reg, 0o644); err != nil {
+		return err
+	}
+	if *examplesOut == "" {
+		return nil
+	}
+	src, err := examplesDir(*examplesSrc)
+	if err != nil {
+		return err
+	}
+	if err := removeStaleExamples(*examplesOut); err != nil {
+		return err
+	}
+	for _, o := range outs {
+		if !o.Served {
+			continue
+		}
+		if err := writeExamples(*examplesOut, src, o); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // removeStale deletes generated files a removed kind would otherwise leave
