@@ -86,6 +86,9 @@ func TestAccMalwareIoc(t *testing.T)            { testAccKind(t, "MalwareIoc") }
 func TestAccPackageFirewallPolicy(t *testing.T) { testAccKind(t, "PackageFirewallPolicy") }
 func TestAccPackageList(t *testing.T)           { testAccKind(t, "PackageList") }
 func TestAccQualityGate(t *testing.T)           { testAccKind(t, "QualityGate") }
+func TestAccRemediationPolicy(t *testing.T)     { testAccKind(t, "RemediationPolicy") }
+func TestAccRiskStrategy(t *testing.T)          { testAccKind(t, "RiskStrategy") }
+func TestAccSuppression(t *testing.T)           { testAccKind(t, "Suppression") }
 func TestAccVexSource(t *testing.T)             { testAccKind(t, "VexSource") }
 
 // Every served kind has its TestAcc<Kind>, so a newly served kind cannot

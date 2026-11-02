@@ -15,6 +15,9 @@ var generatedKinds = []kindSpec{
 	packageFirewallPolicyKind,
 	packageListKind,
 	qualityGateKind,
+	remediationPolicyKind,
+	riskStrategyKind,
+	suppressionKind,
 	vexSourceKind,
 }
 
@@ -28,10 +31,7 @@ var generatedKindsUnserved = []kindSpec{
 	detectionRuleKind,
 	detectionRuleFeedKind,
 	logSourceKind,
-	remediationPolicyKind,
-	riskStrategyKind,
 	runtimeSensorPolicyKind,
 	savedSearchKind,
 	scheduledReportKind,
-	suppressionKind,
 }

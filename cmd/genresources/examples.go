@@ -174,23 +174,28 @@ func exampleHCL(k *kindOut, variant string, raw []byte) ([]byte, string, error) 
 		return nil, "", errors.New("no documents")
 	}
 
-	var vars, body bytes.Buffer
+	var vars, body, alts bytes.Buffer
 	seen := map[string]bool{}
 	for i, d := range docs {
+		// A kind with one object per tenant can only be declared once. Its
+		// further documents are alternatives, written commented out.
+		alt := k.Singleton && i > 0
+		var doc, altVars bytes.Buffer
+		dv := &vars
+		if alt {
+			dv = &altVars
+		}
 		label := resourceLabel(d.Metadata.Name)
 		for n := 2; seen[label]; n++ {
 			label = resourceLabel(d.Metadata.Name) + "_" + strconv.Itoa(n)
 		}
 		seen[label] = true
-		if i > 0 {
-			body.WriteString("\n")
-		}
-		w := &hclWriter{vars: &vars, prefix: label}
-		fmt.Fprintf(&body, "resource \"vulnetix_%s\" %q {\n", k.TypeName, label)
+		w := &hclWriter{vars: dv, prefix: label}
+		fmt.Fprintf(&doc, "resource \"vulnetix_%s\" %q {\n", k.TypeName, label)
 		if !k.Singleton || d.Metadata.Name != "default" {
-			fmt.Fprintf(&body, "name = %s\n", hclString(d.Metadata.Name))
+			fmt.Fprintf(&doc, "name = %s\n", hclString(d.Metadata.Name))
 		}
-		if err := w.object(&body, d.Spec, k.Tree, "spec"); err != nil {
+		if err := w.object(&doc, d.Spec, k.Tree, "spec"); err != nil {
 			return nil, "", err
 		}
 		for _, meta := range []struct {
@@ -200,15 +205,26 @@ func exampleHCL(k *kindOut, variant string, raw []byte) ([]byte, string, error) 
 			if len(meta.m) == 0 {
 				continue
 			}
-			fmt.Fprintf(&body, "%s = ", meta.attr)
+			fmt.Fprintf(&doc, "%s = ", meta.attr)
 			anyMap := map[string]any{}
 			for key, v := range meta.m {
 				anyMap[key] = v
 			}
-			w.freeMap(&body, anyMap)
+			w.freeMap(&doc, anyMap)
+			doc.WriteString("\n")
+		}
+		doc.WriteString("}\n")
+		if alt {
+			alts.WriteString("\n# Or, instead (one per tenant, so declare only one):\n#\n")
+			for _, line := range strings.Split(strings.TrimRight(string(hclwrite.Format(append(altVars.Bytes(), doc.Bytes()...))), "\n"), "\n") {
+				alts.WriteString(strings.TrimRight("# "+line, " ") + "\n")
+			}
+			continue
+		}
+		if body.Len() > 0 {
 			body.WriteString("\n")
 		}
-		body.WriteString("}\n")
+		body.Write(doc.Bytes())
 	}
 
 	var b bytes.Buffer
@@ -222,7 +238,8 @@ func exampleHCL(k *kindOut, variant string, raw []byte) ([]byte, string, error) 
 		b.WriteString("\n")
 	}
 	b.Write(body.Bytes())
-	return hclwrite.Format(b.Bytes()), docs[0].Metadata.Name, nil
+	out := hclwrite.Format(b.Bytes())
+	return append(out, alts.Bytes()...), docs[0].Metadata.Name, nil
 }
 
 // resourceLabel turns an object name into a Terraform resource label.

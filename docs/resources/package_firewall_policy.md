@@ -4,7 +4,7 @@ subcategory: ""
 description: |-
   The tenant's package firewall policy: what the registry proxy refuses to serve, the posture it enforces in, per-ecosystem posture overrides, and the upstream mirrors it fetches from. One per tenant. The allow and deny lists are PackageList objects. A field left out keeps its current value.
   Manages the PackageFirewallPolicy config kind through /config/objects/PackageFirewallPolicy/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, MalwareIoc and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 ---
 
 # vulnetix_package_firewall_policy (Resource)
@@ -13,7 +13,7 @@ The tenant's package firewall policy: what the registry proxy refuses to serve, 
 
 Manages the `PackageFirewallPolicy` config kind through `/config/objects/PackageFirewallPolicy/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `MalwareIoc` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 
 ## Example Usage
 

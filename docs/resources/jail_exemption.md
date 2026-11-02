@@ -5,7 +5,7 @@ description: |-
   A time-boxed waiver of the jail policy that applies to one repository. It applies after aggregation: the verdict still reports the observed value, the threshold, that the rule would have breached, and which exemption suppressed it. Removing the document deactivates the exemption; the record of what was waived, by whom and why is kept.
   An object of this kind can reference JailPolicy objects. Reference those resources' attributes, or add depends_on, so Terraform applies them first.
   Manages the JailExemption config kind through /config/objects/JailExemption/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, MalwareIoc and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 ---
 
 # vulnetix_jail_exemption (Resource)
@@ -16,7 +16,7 @@ An object of this kind can reference `JailPolicy` objects. Reference those resou
 
 Manages the `JailExemption` config kind through `/config/objects/JailExemption/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `MalwareIoc` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 
 ## Example Usage
 

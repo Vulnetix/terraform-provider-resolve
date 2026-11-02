@@ -5,7 +5,7 @@ description: |-
   VEX documents read back as suppression rules. A not_affected statement (CycloneDX not_affected or false_positive) becomes a suppression with the document's justification, timestamp and author; fixed or resolved marks the finding remediated; affected, in_triage and exploitable are recorded as triage context; under_investigation is an annotation. Products are matched to findings by purl. A later statement wins. Suppressions a source creates are owned by it: they go when the statement leaves the document, and cannot be deleted by hand. Name exactly one of tea, s3, git, path or urls.
   An object of this kind can reference VaultEntry objects. Reference those resources' attributes, or add depends_on, so Terraform applies them first.
   Manages the VexSource config kind through /config/objects/VexSource/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, MalwareIoc and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 ---
 
 # vulnetix_vex_source (Resource)
@@ -16,7 +16,7 @@ An object of this kind can reference `VaultEntry` objects. Reference those resou
 
 Manages the `VexSource` config kind through `/config/objects/VexSource/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `MalwareIoc` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 
 ## Example Usage
 

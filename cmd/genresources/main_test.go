@@ -321,3 +321,27 @@ func TestGeneratedExamplesUpToDate(t *testing.T) {
 		}
 	}
 }
+
+// A one-per-tenant kind can be declared once: further documents in an
+// example become a commented-out alternative.
+func TestExampleHCLSingletonAlternatives(t *testing.T) {
+	set, err := loadSchemas(os.DirFS("testdata/schemas"), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	o, err := (&generator{set: set, version: "test"}).generate("Widget")
+	if err != nil {
+		t.Fatal(err)
+	}
+	o.Singleton = true
+	raw := []byte("kind: Widget\nmetadata: {name: default}\nspec: {color: red}\n---\nkind: Widget\nmetadata: {name: default}\nspec: {color: blue}\n")
+	hcl, _, err := exampleHCL(o, "advanced", raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(hcl)
+	if strings.Count(s, "\nresource ") != 1 || !strings.Contains(s, "# Or, instead") ||
+		!strings.Contains(s, `# resource "vulnetix_widget" "default_2" {`) || !strings.Contains(s, `#   color = "blue"`) {
+		t.Errorf("advanced.tf:\n%s", s)
+	}
+}

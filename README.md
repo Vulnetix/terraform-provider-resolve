@@ -53,11 +53,14 @@ Every resource has a minimal example (only the required arguments) and an advanc
 | `vulnetix_package_firewall_policy` | PackageFirewallPolicy, one per tenant | [minimal](examples/resources/vulnetix_package_firewall_policy/minimal.tf), [advanced](examples/resources/vulnetix_package_firewall_policy/advanced.tf) | [docs](docs/resources/package_firewall_policy.md) |
 | `vulnetix_package_list` | PackageList | [minimal](examples/resources/vulnetix_package_list/minimal.tf), [advanced](examples/resources/vulnetix_package_list/advanced.tf) | [docs](docs/resources/package_list.md) |
 | `vulnetix_quality_gate` | QualityGate, one per tenant | [minimal](examples/resources/vulnetix_quality_gate/minimal.tf), [advanced](examples/resources/vulnetix_quality_gate/advanced.tf) | [docs](docs/resources/quality_gate.md) |
+| `vulnetix_remediation_policy` | RemediationPolicy, one per tenant | [minimal](examples/resources/vulnetix_remediation_policy/minimal.tf), [advanced](examples/resources/vulnetix_remediation_policy/advanced.tf) | [docs](docs/resources/remediation_policy.md) |
+| `vulnetix_risk_strategy` | RiskStrategy | [minimal](examples/resources/vulnetix_risk_strategy/minimal.tf), [advanced](examples/resources/vulnetix_risk_strategy/advanced.tf) | [docs](docs/resources/risk_strategy.md) |
+| `vulnetix_suppression` | Suppression | [minimal](examples/resources/vulnetix_suppression/minimal.tf), [advanced](examples/resources/vulnetix_suppression/advanced.tf) | [docs](docs/resources/suppression.md) |
 | `vulnetix_vex_source` | VexSource | [minimal](examples/resources/vulnetix_vex_source/minimal.tf), [advanced](examples/resources/vulnetix_vex_source/advanced.tf) | [docs](docs/resources/vex_source.md) |
 
 Each resource calls `GET`, `PUT` and `DELETE /config/objects/{kind}/{name}`. A PUT sends `{"document": <vulnetix.com/v1 document>, "manager": "<manager>"}`. Every request and response shape is in [internal/client/client.go](internal/client/client.go).
 
-Kinds with a released schema but no engine adapter yet (RiskStrategy, RemediationPolicy, Suppression and the SIEM, cloud and feed kinds) are generated but not offered; each becomes a resource when the engine serves it. LicensePolicy and LicenseExceptions are validate-only: the server stores nothing for them, so they have no resource.
+Kinds with a released schema but no engine adapter yet (the SIEM, cloud and feed kinds) are generated but not offered; each becomes a resource when the engine serves it. LicensePolicy and LicenseExceptions are validate-only: the server stores nothing for them, so they have no resource.
 
 ## Data sources
 
@@ -65,7 +68,8 @@ Kinds with a released schema but no engine adapter yet (RiskStrategy, Remediatio
 |-------------|-----|
 | `vulnetix_kinds` | `GET /config/kinds`: the kinds the server applies, with their schemas. |
 | `vulnetix_ai_models` | `GET /ai-firewall/models`: the AI firewall model catalogue, filtered by provider or search. |
-| `vulnetix_vex_statements` | `GET /review/decisions?kind=vex`: the tenant's published OpenVEX statements, filtered by status or text. |
+| `vulnetix_vex_statements` | `GET /vex/statements`: every VEX statement the tenant holds, in every status, with its products and purls, filtered by status, vulnerability, purl or repository. A token needs the `VexSource` or `Suppression` kind. |
+| `vulnetix_github_installation_repos` | `GET /integrations/github/installations/repos`: the repositories the tenant's GitHub App installations reach, from Vulnetix's cache. A token needs the `github-installations` scope. |
 | `vulnetix_detection_rule_feed` | `GET /detection-rule-feeds`, `GET /detection-rule-feeds/{uuid}`: one feed and its entries (Pro plan). |
 | `vulnetix_virtual_patches` | The same feed routes: the entries whose `rule_table` is `virtual_patch`. |
 
@@ -82,7 +86,7 @@ Each resource's `import.sh` beside its examples has the command for its example 
 
 ## How state is read
 
-Most kinds merge a document into the stored object, and the tenant's row can hold values the configuration never set. So a refresh only reads the arguments you manage: an argument removed from the configuration stops being managed and keeps its last server value. Wholly declared kinds (ApiSpecSource, MalwareIoc, VexSource) are replaced instead, so a removed argument goes back to its default. Import reads every field the server holds.
+Most kinds merge a document into the stored object, and the tenant's row can hold values the configuration never set. So a refresh only reads the arguments you manage: an argument removed from the configuration stops being managed and keeps its last server value. Wholly declared kinds (ApiSpecSource, MalwareIoc, RemediationPolicy, RiskStrategy, Suppression, VexSource) are replaced instead, so a removed argument goes back to its default. Import reads every field the server holds.
 
 ## Secrets
 

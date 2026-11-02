@@ -4,7 +4,7 @@ subcategory: ""
 description: |-
   An allow or deny list of AI tools, MCP servers, skills or clients, stored as AI Firewall guardrails: one guardrail row per pattern, of rule type _. The list owns its rows, so removing a pattern removes its row. The same list can be written inline as AiFirewallPolicy spec.capabilities.
   Manages the AiGovernanceList config kind through /config/objects/AiGovernanceList/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, MalwareIoc and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 ---
 
 # vulnetix_ai_governance_list (Resource)
@@ -13,7 +13,7 @@ An allow or deny list of AI tools, MCP servers, skills or clients, stored as AI 
 
 Manages the `AiGovernanceList` config kind through `/config/objects/AiGovernanceList/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `MalwareIoc` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 
 ## Example Usage
 

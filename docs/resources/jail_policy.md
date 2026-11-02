@@ -4,7 +4,7 @@ subcategory: ""
 description: |-
   A jail policy: the ordered rules vulnetix jail evaluates for a repository over everything ever reported for it (vulnerabilities past their SLA, dependencies past end of life, migrations that have not landed, hygiene categories that regressed). A policy without repository is the tenant's default; a policy with one is a per-repository override that replaces the default outright. Separate from QualityGate, which judges a single scan.
   Manages the JailPolicy config kind through /config/objects/JailPolicy/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, MalwareIoc and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 ---
 
 # vulnetix_jail_policy (Resource)
@@ -13,7 +13,7 @@ A jail policy: the ordered rules vulnetix jail evaluates for a repository over e
 
 Manages the `JailPolicy` config kind through `/config/objects/JailPolicy/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `MalwareIoc` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 
 ## Example Usage
 

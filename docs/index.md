@@ -57,9 +57,12 @@ The provider authenticates with a config management token (`vmt_...`), sent as `
 | [`vulnetix_package_firewall_policy`](resources/package_firewall_policy) | PackageFirewallPolicy (one per tenant) |
 | [`vulnetix_package_list`](resources/package_list) | PackageList |
 | [`vulnetix_quality_gate`](resources/quality_gate) | QualityGate (one per tenant) |
+| [`vulnetix_remediation_policy`](resources/remediation_policy) | RemediationPolicy (one per tenant) |
+| [`vulnetix_risk_strategy`](resources/risk_strategy) | RiskStrategy |
+| [`vulnetix_suppression`](resources/suppression) | Suppression |
 | [`vulnetix_vex_source`](resources/vex_source) | VexSource |
 
-Data sources: [`vulnetix_kinds`](data-sources/kinds), [`vulnetix_ai_models`](data-sources/ai_models), [`vulnetix_vex_statements`](data-sources/vex_statements), [`vulnetix_detection_rule_feed`](data-sources/detection_rule_feed) and [`vulnetix_virtual_patches`](data-sources/virtual_patches).
+Data sources: [`vulnetix_kinds`](data-sources/kinds), [`vulnetix_ai_models`](data-sources/ai_models), [`vulnetix_vex_statements`](data-sources/vex_statements), [`vulnetix_github_installation_repos`](data-sources/github_installation_repos),[`vulnetix_detection_rule_feed`](data-sources/detection_rule_feed) and [`vulnetix_virtual_patches`](data-sources/virtual_patches).
 
 ## Ownership and drift
 

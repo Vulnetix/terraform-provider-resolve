@@ -4,7 +4,7 @@ subcategory: ""
 description: |-
   A custom AI Firewall provider owned by the tenant: a model server the gateway forwards to, beside the built-in catalogue. Only this tenant sees or uses it. metadata.name is the provider slug, which becomes the gateway path prefix (///v1/...) and is what AiFirewallPolicy providers and models refer to. A tenant has at most 10 custom providers, and a slug that a built-in provider uses is refused at apply.
   Manages the AiProvider config kind through /config/objects/AiProvider/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, MalwareIoc and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 ---
 
 # vulnetix_ai_provider (Resource)
@@ -13,7 +13,7 @@ A custom AI Firewall provider owned by the tenant: a model server the gateway fo
 
 Manages the `AiProvider` config kind through `/config/objects/AiProvider/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `MalwareIoc` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 
 ## Example Usage
 

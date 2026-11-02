@@ -3,24 +3,25 @@
 page_title: "vulnetix_vex_statements Data Source - vulnetix"
 subcategory: ""
 description: |-
-  The tenant's published OpenVEX statements, newest first, as the review decisions ledger lists them (GET /review/decisions?kind=vex). Statements still under_investigation are not listed. Statements come from triage and from vulnetix_vex_source imports.
+  Every VEX statement the tenant holds, newest first (GET /vex/statements), across all its documents and in every status, including under_investigation and affected. Statements come from triage, from suppressions and from vulnetix_vex_source imports. A vmt_ token needs the VexSource or Suppression kind.
 ---
 
 # vulnetix_vex_statements (Data Source)
 
-The tenant's published OpenVEX statements, newest first, as the review decisions ledger lists them (`GET /review/decisions?kind=vex`). Statements still `under_investigation` are not listed. Statements come from triage and from `vulnetix_vex_source` imports.
+Every VEX statement the tenant holds, newest first (`GET /vex/statements`), across all its documents and in every status, including `under_investigation` and `affected`. Statements come from triage, from suppressions and from `vulnetix_vex_source` imports. A `vmt_` token needs the `VexSource` or `Suppression` kind.
 
 ## Example Usage
 
 ```terraform
-# The tenant's not_affected statements, newest first.
-data "vulnetix_vex_statements" "not_affected" {
+# The tenant's not_affected statements about one package, newest first.
+data "vulnetix_vex_statements" "lodash" {
   status = "not_affected"
+  purl   = "pkg:npm/lodash"
   limit  = 200
 }
 
-output "not_affected_vulnerabilities" {
-  value = distinct([for s in data.vulnetix_vex_statements.not_affected.statements : s.vulnerability_id])
+output "lodash_not_affected" {
+  value = { for s in data.vulnetix_vex_statements.lodash.statements : s.vulnerability_id => s.justification }
 }
 ```
 
@@ -30,8 +31,10 @@ output "not_affected_vulnerabilities" {
 ### Optional
 
 - `limit` (Number) The most statements to read. Defaults to 1000.
-- `query` (String) Only statements whose vulnerability, justification or detail contains this, ignoring case.
-- `status` (String) Only statements with this status: `not_affected`, `affected` or `fixed`.
+- `purl` (String) Only statements whose products contain this, such as `pkg:npm/lodash`.
+- `repository` (String) Only statements from this repository's documents, as `owner/name`.
+- `status` (String) Only statements with this status: `not_affected`, `affected`, `fixed` or `under_investigation`.
+- `vulnerability_id` (String) Only statements about this vulnerability, such as `CVE-2024-3094`, ignoring case.
 
 ### Read-Only
 
@@ -42,10 +45,24 @@ output "not_affected_vulnerabilities" {
 
 Read-Only:
 
+- `action_statement` (String) What to do, for `affected`.
+- `aliases` (List of String) Other ids for the vulnerability.
 - `author` (String) The VEX document's author.
-- `detail` (String) The status notes, or the impact statement.
+- `disposition` (String) How the statement was disposed, when it was.
+- `document_id` (String) The VEX document's own identifier (`@id`).
+- `document_uuid` (String) The VEX document's id.
+- `grounded` (Boolean) Whether the document is grounded in a scan of the product.
+- `impact_statement` (String) Why the product is not affected, in prose.
 - `justification` (String) The VEX justification for `not_affected`, such as `vulnerable_code_not_in_execute_path`.
-- `status` (String) `not_affected`, `affected` or `fixed`.
+- `last_updated` (Number) When the statement last changed, in Unix milliseconds; 0 when never.
+- `products` (String) The statement's products as stored (OpenVEX products or CycloneDX affects), as a JSON string.
+- `purls` (List of String) The package URLs found in the products.
+- `repository` (String) The repository the document belongs to, as `owner/name`, if any.
+- `source_format` (String) The document's format, such as `openvex` or `cyclonedx`.
+- `status` (String) `not_affected`, `affected`, `fixed` or `under_investigation`.
+- `status_notes` (String) Notes on the status.
+- `supplier` (String) The supplier, when given.
+- `suppression_uuid` (String) The suppression the statement became, if any.
 - `timestamp` (Number) The statement's timestamp, in Unix milliseconds.
 - `uuid` (String) The statement's id.
 - `vulnerability_id` (String) The vulnerability, such as `CVE-2024-3094`.

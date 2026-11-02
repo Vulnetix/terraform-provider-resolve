@@ -5,7 +5,7 @@ description: |-
   Entries for the tenant's package firewall allow list or deny list. The tenant has one of each; every PackageList contributes its entries to one of them, and owns only the entries it declares. A deny entry always blocks, in every mode, ahead of every other check. An allow entry waives every policy block (thresholds, KEV, exploits, bad actors, end of life, cooldown, version lag) but never an exact-version malware match, a known-bad artifact hash or a malware scan verdict.
   An object of this kind can reference PackageFirewallPolicy objects. Reference those resources' attributes, or add depends_on, so Terraform applies them first.
   Manages the PackageList config kind through /config/objects/PackageList/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, MalwareIoc and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 ---
 
 # vulnetix_package_list (Resource)
@@ -16,7 +16,7 @@ An object of this kind can reference `PackageFirewallPolicy` objects. Reference 
 
 Manages the `PackageList` config kind through `/config/objects/PackageList/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `MalwareIoc` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 
 ## Example Usage
 

@@ -4,7 +4,7 @@ subcategory: ""
 description: |-
   Where Vulnetix finds an organisation's OpenAPI and Swagger descriptions. Each source is one place to read specs from: a file in a repository, a URL, a host to probe for well-known paths, or a connected API gateway or catalogue. A tenant may declare many, each named.
   Manages the ApiSpecSource config kind through /config/objects/ApiSpecSource/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, MalwareIoc and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 ---
 
 # vulnetix_api_spec_source (Resource)
@@ -13,7 +13,7 @@ Where Vulnetix finds an organisation's OpenAPI and Swagger descriptions. Each so
 
 Manages the `ApiSpecSource` config kind through `/config/objects/ApiSpecSource/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `MalwareIoc` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
 
 ## Example Usage
 
