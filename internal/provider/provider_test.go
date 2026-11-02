@@ -2,8 +2,11 @@ package provider
 
 import (
 	"context"
+	"os"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
 
@@ -29,5 +32,30 @@ func TestResourcesAreServedKindsOnly(t *testing.T) {
 	}
 	if len(got) != len(generatedKinds) {
 		t.Errorf("%d resources for %d served kinds", len(got), len(generatedKinds))
+	}
+}
+
+// The README and the registry's index page list every served resource and
+// every data source.
+func TestReadmeAndIndexListEverything(t *testing.T) {
+	names := []string{}
+	for _, k := range generatedKinds {
+		names = append(names, "vulnetix_"+k.TypeName)
+	}
+	for _, f := range New("test")().DataSources(context.Background()) {
+		var resp datasource.MetadataResponse
+		f().Metadata(context.Background(), datasource.MetadataRequest{ProviderTypeName: "vulnetix"}, &resp)
+		names = append(names, resp.TypeName)
+	}
+	for _, file := range []string{"../../README.md", "../../templates/index.md.tmpl"} {
+		b, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, n := range names {
+			if !strings.Contains(string(b), "`"+n+"`") {
+				t.Errorf("%s does not list %s", file, n)
+			}
+		}
 	}
 }

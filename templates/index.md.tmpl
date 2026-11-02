@@ -1,0 +1,67 @@
+---
+page_title: "{{.ProviderShortName}} Provider"
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.ProviderShortName}} Provider
+
+{{ .Description | trimspace }}
+
+Each resource is one config kind. Its arguments are the kind's `spec`, in snake case (`blockMalware` is `block_malware`), beside `name`, `labels` and `annotations` from its `metadata`. Every resource page shows a **Minimal** example (only the required arguments), an **Advanced** example (every argument) and how to import an existing object.
+
+## Install
+
+Terraform 1.11 or later, or OpenTofu 1.11 or later: the provider uses write-only arguments for secrets.
+
+{{ tffile "examples/provider/provider.tf" }}
+
+Run `terraform init` (or `tofu init`). OpenTofu reads the same `vulnetix/vulnetix` source from its own registry; nothing else changes.
+
+## Authentication
+
+The provider authenticates with a config management token (`vmt_...`), sent as `Authorization: Bearer`. A token acts as a service account of the tenant and carries a role and the kinds it may change:
+
+- An owner or admin, signed in, issues one with `POST /v1/config/tokens` (`name`, `principalUuid` of a service account, `role`, `kinds`, `expiresInDays`). The token is in that answer only; rotate it with `POST /v1/config/tokens/{uuid}/rotate` and revoke it with `DELETE /v1/config/tokens/{uuid}`.
+- Applying needs the `owner` or `admin` role and the kinds the configuration manages.
+- Pass it as `VULNETIX_CONFIG_TOKEN`, from your CI secret store, rather than in the configuration.
+
+`VULNETIX_ENDPOINT` points the provider at another API base URL, such as a staging tenant's.
+
+## Resources
+
+| Resource | Kind |
+|----------|------|
+| [`vulnetix_ai_firewall_policy`](resources/ai_firewall_policy) | AiFirewallPolicy (one per tenant) |
+| [`vulnetix_ai_governance_list`](resources/ai_governance_list) | AiGovernanceList |
+| [`vulnetix_ai_provider`](resources/ai_provider) | AiProvider |
+| [`vulnetix_api_spec_source`](resources/api_spec_source) | ApiSpecSource |
+| [`vulnetix_jail_exemption`](resources/jail_exemption) | JailExemption |
+| [`vulnetix_jail_policy`](resources/jail_policy) | JailPolicy |
+| [`vulnetix_malware_ioc`](resources/malware_ioc) | MalwareIoc |
+| [`vulnetix_package_firewall_policy`](resources/package_firewall_policy) | PackageFirewallPolicy (one per tenant) |
+| [`vulnetix_package_list`](resources/package_list) | PackageList |
+| [`vulnetix_quality_gate`](resources/quality_gate) | QualityGate (one per tenant) |
+| [`vulnetix_vex_source`](resources/vex_source) | VexSource |
+
+Data sources: [`vulnetix_kinds`](data-sources/kinds), [`vulnetix_ai_models`](data-sources/ai_models), [`vulnetix_vex_statements`](data-sources/vex_statements), [`vulnetix_detection_rule_feed`](data-sources/detection_rule_feed) and [`vulnetix_virtual_patches`](data-sources/virtual_patches).
+
+## Ownership and drift
+
+Every apply is recorded with the provider's `manager` (`terraform` by default). A GitOps `vulnetix config apply --prune` only deletes objects its own manager owns, so it leaves Terraform's alone, and Terraform cannot delete an object another manager owns.
+
+Most kinds merge a document into the stored object, so a refresh only reads the arguments you set: the server's defaults never show as a diff. Import is the exception and reads every field.
+
+## Secrets
+
+A secret property is two arguments: `<name>_wo`, write-only, never in the plan or the state; and `<name>_wo_version`, a number to change when the secret should be sent again. Feed `<name>_wo` from an ephemeral variable or an ephemeral resource.
+
+## Import
+
+Import any object by its name (`metadata.name`); one-per-tenant kinds are named `default`:
+
+```shell
+terraform import vulnetix_quality_gate.default default
+```
+
+{{ .SchemaMarkdown | trimspace }}
