@@ -176,3 +176,39 @@ func stripHeader(b []byte) []byte {
 	}
 	return b
 }
+
+// Every array of a released kind must be decided in collections.go from the
+// engine adapter, and every entry there must still name an array.
+func TestEveryArrayDecided(t *testing.T) {
+	set, err := loadSchemas(configschemas.FS(), "schemas")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &generator{set: set, version: "test"}
+	for _, k := range set.kinds() {
+		if _, err := g.generate(k); err != nil {
+			t.Fatalf("%s: %v", k, err)
+		}
+	}
+	for _, where := range g.undecided {
+		t.Errorf("%s: no collections entry; decide list or set from the engine adapter", where)
+	}
+	for where := range collections {
+		if !g.decided[where] {
+			t.Errorf("collections entry %s names no array in the released schemas", where)
+		}
+	}
+}
+
+// Every served kind must have a released schema.
+func TestServedKindsHaveSchemas(t *testing.T) {
+	have := map[string]bool{}
+	for _, k := range configschemas.Kinds() {
+		have[k] = true
+	}
+	for k := range served {
+		if !have[k] {
+			t.Errorf("served kind %s has no schema in this config-schemas release", k)
+		}
+	}
+}

@@ -66,6 +66,8 @@ func lowerCamel(s string) string {
 type kindOut struct {
 	Kind, TypeName, Ident string
 	Source                []byte
+	// Served kinds are applied by the engine; see served.go.
+	Served bool
 }
 
 type generator struct {
@@ -73,6 +75,24 @@ type generator struct {
 	// version is the config-schemas release the schemas came from, for the
 	// generated header.
 	version string
+	// undecided collects array paths with no collections entry, which fell
+	// back to uniqueItems (a set) or a list. decided collects the entries
+	// used, so a test can find stale ones.
+	undecided []string
+	decided   map[string]bool
+}
+
+// ordered decides list or set for the array at where.
+func (g *generator) ordered(where string, n *node) bool {
+	if c, ok := collections[where]; ok {
+		if g.decided == nil {
+			g.decided = map[string]bool{}
+		}
+		g.decided[where] = true
+		return c.ordered
+	}
+	g.undecided = append(g.undecided, where)
+	return !n.UniqueItems
 }
 
 // generate emits the kindSpec for one kind.
@@ -144,6 +164,7 @@ const imports = `import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -161,6 +182,7 @@ var (
 	_ = float64validator.AtLeast
 	_ = int64validator.AtLeast
 	_ = listvalidator.SizeAtLeast
+	_ = setvalidator.SizeAtLeast
 	_ = stringvalidator.OneOf
 	_ validator.String
 	_ = types.StringType
@@ -179,6 +201,11 @@ func (g *generator) object(attrs, fields *bytes.Buffer, obj *node, where string,
 	seen := map[string]string{}
 	for _, jsonName := range names {
 		prop := obj.Properties[jsonName]
+		if prop.boolean != nil {
+			// true allows anything and false forbids the property: neither
+			// is an argument.
+			continue
+		}
 		attr := snake(jsonName)
 		if top && reserved[attr] {
 			return fmt.Errorf("%s.%s: maps to %s, which the resource reserves", where, jsonName, attr)
@@ -265,21 +292,28 @@ func (g *generator) property(attrs, fields *bytes.Buffer, prop *node, jsonName, 
 		if err != nil {
 			return fmt.Errorf("%s: %w", where, err)
 		}
-		lv := listValidators(r)
-		if isObject(el) && len(el.Properties) > 0 {
+		nested := isObject(el) && len(el.Properties) > 0
+		ek, et, isScalar := scalar(el)
+		if !nested && !isScalar {
+			break
+		}
+		coll, fk := "List", "fieldList"
+		if !g.ordered(where, r) {
+			coll, fk = "Set", "fieldSet"
+		}
+		lv := sizeValidators(r, coll)
+		if nested {
 			var ca, cf bytes.Buffer
 			if err := g.object(&ca, &cf, el, where+"[]", false, true); err != nil {
 				return err
 			}
-			fmt.Fprintf(attrs, "%q: schema.ListNestedAttribute{\n%s%sNestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{\n%s}},\n},\n", attr, head, lv, ca.String())
-			fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: fieldListObject, Children: []field{\n%s}},\n", attr, jsonName, cf.String())
+			fmt.Fprintf(attrs, "%q: schema.%sNestedAttribute{\n%s%sNestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{\n%s}},\n},\n", attr, coll, head, lv, ca.String())
+			fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: %sObject, Children: []field{\n%s}},\n", attr, jsonName, fk, cf.String())
 			return nil
 		}
-		if ek, et, ok := scalar(el); ok {
-			fmt.Fprintf(attrs, "%q: schema.ListAttribute{\n%s%sElementType: %s,\n},\n", attr, head, lv, et)
-			fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: fieldList, Elem: %s},\n", attr, jsonName, ek)
-			return nil
-		}
+		fmt.Fprintf(attrs, "%q: schema.%sAttribute{\n%s%sElementType: %s,\n},\n", attr, coll, head, lv, et)
+		fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: %s, Elem: %s},\n", attr, jsonName, fk, ek)
+		return nil
 
 	default:
 		if ek, _, ok := scalar(r); ok {
@@ -302,8 +336,11 @@ func isObject(n *node) bool {
 	return n.hasType("object") || (len(n.types()) == 0 && len(n.Properties) > 0)
 }
 
-// scalar classifies a leaf. Enum and const without a type are strings when
-// every value is one.
+// scalar classifies a leaf. Enum and const without a type take the type
+// every value shares (string or boolean). A declared type wins over oneOf and
+// anyOf, which then only constrain the value (a timestamp's formats, a
+// teaId's patterns). A string that may also be a number (a guardrail
+// pattern, "5" or 5) is a string: the schema accepts the string form.
 func scalar(n *node) (kind, elemType string, ok bool) {
 	ts := n.types()
 	nonNull := []string{}
@@ -312,19 +349,14 @@ func scalar(n *node) (kind, elemType string, ok bool) {
 			nonNull = append(nonNull, t)
 		}
 	}
-	if len(nonNull) == 0 && (len(n.Enum) > 0 || n.Const != nil) {
-		vals := append([]any{n.Const}, n.Enum...)
-		for _, v := range vals {
-			if v == nil {
-				continue
-			}
-			if _, isStr := v.(string); !isStr {
-				return "", "", false
-			}
-		}
+	declared := len(nonNull) > 0
+	if !declared && (len(n.Enum) > 0 || n.Const != nil) {
+		nonNull = []string{constType(append([]any{n.Const}, n.Enum...))}
+	}
+	if len(nonNull) == 2 && contains(nonNull, "string") && (contains(nonNull, "integer") || contains(nonNull, "number")) {
 		nonNull = []string{"string"}
 	}
-	if len(nonNull) != 1 || len(n.OneOf) > 0 || len(n.AnyOf) > 0 {
+	if len(nonNull) != 1 || (!declared && (len(n.OneOf) > 0 || len(n.AnyOf) > 0)) {
 		return "", "", false
 	}
 	switch nonNull[0] {
@@ -338,6 +370,39 @@ func scalar(n *node) (kind, elemType string, ok bool) {
 		return "fieldBool", "types.BoolType", true
 	}
 	return "", "", false
+}
+
+// constType is the JSON type every non-null value shares, or "" when they
+// differ or are not strings or booleans.
+func constType(vals []any) string {
+	t := ""
+	for _, v := range vals {
+		var vt string
+		switch v.(type) {
+		case nil:
+			continue
+		case string:
+			vt = "string"
+		case bool:
+			vt = "boolean"
+		default:
+			return ""
+		}
+		if t != "" && t != vt {
+			return ""
+		}
+		t = vt
+	}
+	return t
+}
+
+func contains(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }
 
 func scalarAttr(kind string) string {
@@ -414,18 +479,20 @@ func scalarValidators(n *node, kind string) string {
 	return ""
 }
 
-func listValidators(n *node) string {
+// sizeValidators are minItems and maxItems for a List or a Set.
+func sizeValidators(n *node, coll string) string {
+	pkg := strings.ToLower(coll) + "validator"
 	var vs []string
 	if n.MinItems != nil {
-		vs = append(vs, fmt.Sprintf("listvalidator.SizeAtLeast(%d)", *n.MinItems))
+		vs = append(vs, fmt.Sprintf("%s.SizeAtLeast(%d)", pkg, *n.MinItems))
 	}
 	if n.MaxItems != nil {
-		vs = append(vs, fmt.Sprintf("listvalidator.SizeAtMost(%d)", *n.MaxItems))
+		vs = append(vs, fmt.Sprintf("%s.SizeAtMost(%d)", pkg, *n.MaxItems))
 	}
 	if len(vs) == 0 {
 		return ""
 	}
-	return "Validators: []validator.List{\n" + strings.Join(vs, ",\n") + ",\n},\n"
+	return "Validators: []validator." + coll + "{\n" + strings.Join(vs, ",\n") + ",\n},\n"
 }
 
 // describe is the attribute's documentation: the schema description plus
@@ -451,10 +518,20 @@ func registry(version, varName string, kinds []*kindOut) ([]byte, error) {
 	var b bytes.Buffer
 	fmt.Fprintf(&b, "// Code generated by cmd/genresources from config-schemas %s. DO NOT EDIT.\n\n", version)
 	b.WriteString("package provider\n\n")
-	fmt.Fprintf(&b, "// %s is every kind generated from the schemas, one resource each.\n", varName)
+	fmt.Fprintf(&b, "// %s is every generated kind the config engine applies, one resource\n// each.\n", varName)
 	fmt.Fprintf(&b, "var %s = []kindSpec{\n", varName)
 	for _, k := range kinds {
-		fmt.Fprintf(&b, "%sKind,\n", k.Ident)
+		if k.Served {
+			fmt.Fprintf(&b, "%sKind,\n", k.Ident)
+		}
+	}
+	b.WriteString("}\n\n")
+	fmt.Fprintf(&b, "// %sUnserved have a released schema but no engine adapter yet. The\n// provider does not offer them; the tests still exercise them.\n", varName)
+	fmt.Fprintf(&b, "var %sUnserved = []kindSpec{\n", varName)
+	for _, k := range kinds {
+		if !k.Served {
+			fmt.Fprintf(&b, "%sKind,\n", k.Ident)
+		}
 	}
 	b.WriteString("}\n")
 	return format.Source(b.Bytes())

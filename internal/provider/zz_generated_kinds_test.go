@@ -2,7 +2,12 @@
 
 package provider
 
-// testKinds is every kind generated from the schemas, one resource each.
+// testKinds is every generated kind the config engine applies, one resource
+// each.
 var testKinds = []kindSpec{
 	widgetKind,
 }
+
+// testKindsUnserved have a released schema but no engine adapter yet. The
+// provider does not offer them; the tests still exercise them.
+var testKindsUnserved = []kindSpec{}

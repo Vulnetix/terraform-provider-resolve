@@ -108,7 +108,7 @@ func valueToJSON(in specInput, f field) (any, error) {
 	switch f.Kind {
 	case fieldObject:
 		return toSpec(in, f.Children)
-	case fieldList:
+	case fieldList, fieldSet:
 		var elems []tftypes.Value
 		if err := v.As(&elems); err != nil {
 			return nil, err
@@ -136,7 +136,7 @@ func valueToJSON(in specInput, f field) (any, error) {
 			out[k] = j
 		}
 		return out, nil
-	case fieldListObject:
+	case fieldListObject, fieldSetObject:
 		var elems []tftypes.Value
 		if err := v.As(&elems); err != nil {
 			return nil, err
@@ -270,15 +270,35 @@ func jsonToValue(raw any, at tftypes.Type, f field, prior tftypes.Value, keepAll
 			return tftypes.Value{}, err
 		}
 		return tftypes.NewValue(ot, vals), nil
-	case fieldList, fieldListObject:
+	case fieldList, fieldListObject, fieldSet, fieldSetObject:
 		arr, ok := raw.([]any)
 		if !ok {
 			return tftypes.Value{}, fmt.Errorf("expected a list, got %T", raw)
 		}
-		et := at.(tftypes.List).ElementType
+		var et tftypes.Type
+		if lt, ok := at.(tftypes.List); ok {
+			et = lt.ElementType
+		} else {
+			et = at.(tftypes.Set).ElementType
+		}
+		var pe []tftypes.Value
+		if isSet(prior) {
+			if err := prior.As(&pe); err != nil {
+				return tftypes.Value{}, err
+			}
+		}
+		used := make([]bool, len(pe))
 		vals := make([]tftypes.Value, 0, len(arr))
-		for _, e := range arr {
-			v, err := elemToValue(e, et, f)
+		for i, e := range arr {
+			p := nullValue
+			switch {
+			case keepAll:
+			case f.Kind == fieldListObject && i < len(pe):
+				p = pe[i]
+			case f.Kind == fieldSetObject:
+				p = matchElem(e, et, f, pe, used)
+			}
+			v, err := elemToValue(e, et, f, p)
 			if err != nil {
 				return tftypes.Value{}, err
 			}
@@ -291,9 +311,15 @@ func jsonToValue(raw any, at tftypes.Type, f field, prior tftypes.Value, keepAll
 			return tftypes.Value{}, fmt.Errorf("expected a map, got %T", raw)
 		}
 		et := at.(tftypes.Map).ElementType
+		pm := map[string]tftypes.Value{}
+		if isSet(prior) && !keepAll {
+			if err := prior.As(&pm); err != nil {
+				return tftypes.Value{}, err
+			}
+		}
 		vals := make(map[string]tftypes.Value, len(m))
 		for k, e := range m {
-			v, err := elemToValue(e, et, f)
+			v, err := elemToValue(e, et, f, nullOr(pm[k]))
 			if err != nil {
 				return tftypes.Value{}, err
 			}
@@ -304,17 +330,19 @@ func jsonToValue(raw any, at tftypes.Type, f field, prior tftypes.Value, keepAll
 	return scalarToValue(raw, at, f.Kind)
 }
 
-// elemToValue converts one list or map element. Elements of a nested list
-// are taken whole from the server: there is no stable way to match them to
-// prior elements, so the managed-only rule stops at the collection.
-func elemToValue(e any, et tftypes.Type, f field) (tftypes.Value, error) {
-	if f.Kind == fieldListObject || f.Kind == fieldMapObject {
+// elemToValue converts one list, set or map element. An object element with
+// a prior element is read managed-only against it, like a top-level object,
+// so the defaults the server fills into each element (a rule's enabled, a
+// mirror's priority) never show as a diff. One with no prior (a new element,
+// an import) is taken whole.
+func elemToValue(e any, et tftypes.Type, f field, prior tftypes.Value) (tftypes.Value, error) {
+	if f.Kind == fieldListObject || f.Kind == fieldMapObject || f.Kind == fieldSetObject {
 		m, ok := e.(map[string]any)
 		if !ok {
 			return tftypes.Value{}, fmt.Errorf("expected an object element, got %T", e)
 		}
 		ot := et.(tftypes.Object)
-		vals, err := fromSpec(m, ot, nullValue, f.Children, true)
+		vals, err := fromSpec(m, ot, prior, f.Children, !isSet(prior))
 		if err != nil {
 			return tftypes.Value{}, err
 		}
@@ -323,17 +351,41 @@ func elemToValue(e any, et tftypes.Type, f field) (tftypes.Value, error) {
 	return scalarToValue(e, et, f.Elem)
 }
 
+// matchElem finds the prior set element a server element is: the first
+// unused one that reading the server element managed-only against gives back
+// unchanged. A list element is matched by position instead; a set has none,
+// and the server returns its elements in its own order. No match (the
+// element is new, or a managed field drifted) reads the element whole, so
+// the drift shows.
+func matchElem(e any, et tftypes.Type, f field, prior []tftypes.Value, used []bool) tftypes.Value {
+	for i, p := range prior {
+		if used[i] || !isSet(p) {
+			continue
+		}
+		v, err := elemToValue(e, et, f, p)
+		if err == nil && v.Equal(p) {
+			used[i] = true
+			return p
+		}
+	}
+	return nullValue
+}
+
 func scalarToValue(raw any, at tftypes.Type, k fieldKind) (tftypes.Value, error) {
 	if raw == nil {
 		return tftypes.NewValue(at, nil), nil
 	}
 	switch k {
 	case fieldString:
-		s, ok := raw.(string)
-		if !ok {
-			return tftypes.Value{}, fmt.Errorf("expected a string, got %T", raw)
+		switch s := raw.(type) {
+		case string:
+			return tftypes.NewValue(at, s), nil
+		case json.Number:
+			// A property that is a string or a number (a guardrail pattern)
+			// is a string attribute; the server may answer with the number.
+			return tftypes.NewValue(at, s.String()), nil
 		}
-		return tftypes.NewValue(at, s), nil
+		return tftypes.Value{}, fmt.Errorf("expected a string, got %T", raw)
 	case fieldJSON:
 		b, err := json.Marshal(raw)
 		if err != nil {

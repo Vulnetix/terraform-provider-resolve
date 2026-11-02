@@ -1,14 +1,16 @@
 // Package client talks to the Vulnetix config API (vdb-site /v1).
 //
 // Every request and response shape the provider depends on is in this one
-// file. The single-object routes (/config/objects/{kind}/{name}) were designed
-// alongside the provider, so if the server's contract moves, this is the only
-// file that should need to follow it.
+// file, so if the server's contract moves, this is the only file that should
+// need to follow it. The contract is the OpenAPI document the server
+// publishes at {endpoint}/config/openapi.yaml (public, no auth):
 //
 //	GET    {endpoint}/config/kinds                     kinds the server applies
-//	GET    {endpoint}/config/objects/{kind}/{name}     one object, 404 when absent
-//	PUT    {endpoint}/config/objects/{kind}/{name}     {"document": doc, "manager": m}
+//	GET    {endpoint}/config/objects/{kind}/{name}     ObjectResult, 404 when absent
+//	PUT    {endpoint}/config/objects/{kind}/{name}     ObjectPutRequest -> ObjectResult
 //	DELETE {endpoint}/config/objects/{kind}/{name}?manager=m
+//	GET    {endpoint}/config/ownership                 {"objects": [Ownership]}
+//	GET    {endpoint}/config/export?format=yaml        the tenant's documents, secrets redacted
 //	GET    {endpoint}/detection-rule-feeds             the tenant's feeds
 //	GET    {endpoint}/detection-rule-feeds/{uuid}      one feed with its entries
 package client
@@ -40,7 +42,9 @@ const TokenPrefix = "vmt_"
 // APIVersion is the document format every kind uses today.
 const APIVersion = "vulnetix.com/v1"
 
-// ErrNotFound is returned when the object or feed does not exist.
+// ErrNotFound is returned when the object or feed does not exist. A 404 is
+// also an *APIError that wraps it, so the server's message is not lost: the
+// same status means an unknown kind, which a PUT reports as an error.
 var ErrNotFound = errors.New("not found")
 
 // Client is a config API client. The zero value is not usable; build one
@@ -103,18 +107,43 @@ type Metadata struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
-// Object is what the single-object routes return.
+// Object is the OpenAPI ObjectResult: what every single-object route
+// returns.
 type Object struct {
-	Document Document `json:"document"`
-	Manager  string   `json:"manager,omitempty"`
-	UUID     string   `json:"uuid,omitempty"`
+	Document Document     `json:"document"`
+	Status   ObjectStatus `json:"status"`
+	// Action is what a PUT or DELETE did: create, update, noop, delete.
+	Action   string      `json:"action,omitempty"`
+	Warnings []Condition `json:"warnings,omitempty"`
 }
 
-// APIError is a non-2xx answer. Message is the server's "error" (and
-// "message", when present) field, or the raw body.
+// ObjectStatus is the OpenAPI ObjectStatus.
+type ObjectStatus struct {
+	// Phase is Applied, Unchanged, Deleted, Absent or Unmanaged.
+	Phase       string `json:"phase"`
+	Manager     string `json:"manager,omitempty"`
+	ObjectUUID  string `json:"objectUuid,omitempty"`
+	AppliedAt   int64  `json:"appliedAt,omitempty"`
+	AppliedHash string `json:"appliedHash,omitempty"`
+	SourceRef   string `json:"sourceRef,omitempty"`
+	Drift       bool   `json:"drift,omitempty"`
+}
+
+// Condition is a plan warning or blocking condition (OpenAPI Condition).
+type Condition struct {
+	Code    string `json:"code"`
+	Kind    string `json:"kind,omitempty"`
+	Name    string `json:"name,omitempty"`
+	Message string `json:"message"`
+}
+
+// APIError is a non-2xx answer. Code is the server's "error" field
+// (plan_blocked, managed_by_other, not_managed and so on); Message carries it
+// with the details, or the raw body.
 type APIError struct {
 	Method, URL string
 	Status      int
+	Code        string
 	Message     string
 }
 
@@ -122,21 +151,25 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("%s %s: HTTP %d: %s", e.Method, e.URL, e.Status, e.Message)
 }
 
-// authorization is the Authorization header for the configured token. A
-// vmt_ token is a bearer token. Anything else is taken to be the existing
-// org API key, "<orgId>:<hmac>", which orgIDFromRequest already accepts, so
-// the provider can be exercised before management tokens ship.
+// Unwrap makes a 404 match ErrNotFound.
+func (e *APIError) Unwrap() error {
+	if e.Status == http.StatusNotFound {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// authorization is the Authorization header for the configured token: a
+// config management token (vmt_...) or a session JWT, both bearer tokens.
 func (c *Client) authorization() string {
 	if c.token == "" {
 		return ""
 	}
-	if !strings.HasPrefix(c.token, TokenPrefix) && strings.Contains(c.token, ":") {
-		return "ApiKey " + c.token
-	}
 	return "Bearer " + c.token
 }
 
-func (c *Client) do(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+// request sends one request and returns the body of a 2xx answer.
+func (c *Client) request(ctx context.Context, method, path string, query url.Values, body any, accept string) ([]byte, error) {
 	u := c.endpoint + path
 	if len(query) > 0 {
 		u += "?" + query.Encode()
@@ -145,15 +178,15 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		rd = bytes.NewReader(b)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, u, rd)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", accept)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -165,79 +198,79 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
 	if err != nil {
-		return err
-	}
-	if resp.StatusCode == http.StatusNotFound {
-		return ErrNotFound
+		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return &APIError{Method: method, URL: u, Status: resp.StatusCode, Message: errorMessage(raw)}
+		code, msg := errorMessage(raw)
+		return nil, &APIError{Method: method, URL: u, Status: resp.StatusCode, Code: code, Message: msg}
+	}
+	return raw, nil
+}
+
+func (c *Client) do(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+	raw, err := c.request(ctx, method, path, query, body, "application/json")
+	if err != nil {
+		return err
 	}
 	if out == nil || len(bytes.TrimSpace(raw)) == 0 {
 		return nil
 	}
-	dec := json.NewDecoder(bytes.NewReader(raw))
 	// Numbers stay json.Number so an integer spec field never passes through
 	// float64 on its way into Terraform state.
-	dec.UseNumber()
-	if err := dec.Decode(out); err != nil {
-		return fmt.Errorf("%s %s: decode response: %w", method, u, err)
+	if err := unmarshalNumber(raw, out); err != nil {
+		return fmt.Errorf("%s %s: decode response: %w", method, path, err)
 	}
 	return nil
 }
 
-func errorMessage(raw []byte) string {
+// errorMessage reads the server's error bodies: Error and Conflict
+// ({error, message}), PlanError (with plan.blocking conditions) and the
+// validation answer (with problems).
+func errorMessage(raw []byte) (code, msg string) {
 	var e struct {
 		Error    string `json:"error"`
 		Message  string `json:"message"`
 		Problems []struct {
-			Path    string `json:"path"`
+			Kind    string `json:"kind"`
+			Name    string `json:"name"`
 			Message string `json:"message"`
 		} `json:"problems"`
+		Plan *struct {
+			Blocking []Condition `json:"blocking"`
+		} `json:"plan"`
 	}
 	if json.Unmarshal(raw, &e) != nil || e.Error == "" {
-		return strings.TrimSpace(string(raw))
+		return "", strings.TrimSpace(string(raw))
 	}
-	msg := e.Error
+	msg = e.Error
 	if e.Message != "" {
 		msg += ": " + e.Message
 	}
 	for _, p := range e.Problems {
-		msg += "\n  " + strings.TrimSpace(p.Path+" "+p.Message)
+		msg += "\n  " + strings.TrimSpace(objectRef(p.Kind, p.Name)+" "+p.Message)
 	}
-	return msg
+	if e.Plan != nil {
+		for _, b := range e.Plan.Blocking {
+			msg += "\n  " + strings.TrimSpace(b.Code+" "+objectRef(b.Kind, b.Name)+": "+b.Message)
+		}
+	}
+	return e.Error, msg
+}
+
+func objectRef(kind, name string) string {
+	if kind == "" {
+		return name
+	}
+	return kind + "/" + name
 }
 
 func objectPath(kind, name string) string {
 	return "/config/objects/" + url.PathEscape(kind) + "/" + url.PathEscape(name)
-}
-
-// decodeObject accepts either {"document": doc, ...} or a bare document, so
-// the provider keeps working whichever the server settles on.
-func decodeObject(raw map[string]json.RawMessage) (*Object, error) {
-	var o Object
-	if d, ok := raw["document"]; ok {
-		if err := unmarshalNumber(d, &o.Document); err != nil {
-			return nil, err
-		}
-		if m, ok := raw["manager"]; ok {
-			_ = json.Unmarshal(m, &o.Manager)
-		}
-		if u, ok := raw["uuid"]; ok {
-			_ = json.Unmarshal(u, &o.UUID)
-		}
-		return &o, nil
-	}
-	b, _ := json.Marshal(raw)
-	if err := unmarshalNumber(b, &o.Document); err != nil {
-		return nil, err
-	}
-	return &o, nil
 }
 
 func unmarshalNumber(b []byte, v any) error {
@@ -248,16 +281,17 @@ func unmarshalNumber(b []byte, v any) error {
 
 // GetObject reads one object. It returns ErrNotFound when the tenant has none.
 func (c *Client) GetObject(ctx context.Context, kind, name string) (*Object, error) {
-	var raw map[string]json.RawMessage
-	if err := c.do(ctx, http.MethodGet, objectPath(kind, name), nil, nil, &raw); err != nil {
+	var o Object
+	if err := c.do(ctx, http.MethodGet, objectPath(kind, name), nil, nil, &o); err != nil {
 		return nil, err
 	}
-	return decodeObject(raw)
+	return &o, nil
 }
 
-// PutObject applies one document as this client's manager and returns the
-// object as stored. An empty response body is not an error: the caller then
-// keeps what it sent.
+// PutObject applies one document as this client's manager (server-side
+// apply: plan and apply in one transaction) and returns the result. A plan
+// with blocking conditions is refused with HTTP 422, whose APIError lists
+// them.
 func (c *Client) PutObject(ctx context.Context, doc Document) (*Object, error) {
 	if doc.APIVersion == "" {
 		doc.APIVersion = APIVersion
@@ -266,23 +300,82 @@ func (c *Client) PutObject(ctx context.Context, doc Document) (*Object, error) {
 		doc.Spec = map[string]any{}
 	}
 	body := map[string]any{"document": doc, "manager": c.manager}
-	var raw map[string]json.RawMessage
-	if err := c.do(ctx, http.MethodPut, objectPath(doc.Kind, doc.Metadata.Name), nil, body, &raw); err != nil {
+	var o Object
+	if err := c.do(ctx, http.MethodPut, objectPath(doc.Kind, doc.Metadata.Name), nil, body, &o); err != nil {
 		return nil, err
 	}
-	if len(raw) == 0 {
-		return nil, nil
-	}
-	return decodeObject(raw)
+	return &o, nil
 }
 
-// DeleteObject deletes one object. Deleting an absent object succeeds.
+// DeleteObject deletes one object as this client's manager. Deleting an
+// absent object succeeds. An object another manager owns, or that no
+// manager owns (made in the console), is refused with HTTP 409.
 func (c *Client) DeleteObject(ctx context.Context, kind, name string) error {
 	err := c.do(ctx, http.MethodDelete, objectPath(kind, name), url.Values{"manager": {c.manager}}, nil, nil)
 	if errors.Is(err, ErrNotFound) {
 		return nil
 	}
 	return err
+}
+
+// Ownership is one record of GET /config/ownership: an object managed as
+// code, by which manager and from where.
+type Ownership struct {
+	TenantUUID  string            `json:"tenantUuid"`
+	Kind        string            `json:"kind"`
+	Name        string            `json:"name"`
+	ObjectUUID  string            `json:"objectUuid"`
+	Manager     string            `json:"manager"`
+	AppliedHash string            `json:"appliedHash"`
+	AppliedAt   int64             `json:"appliedAt"`
+	AppliedBy   string            `json:"appliedBy"`
+	SourceRef   string            `json:"sourceRef,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
+// ListOwnership lists ownership records, sorted by kind and name. kind and
+// name filter when set.
+func (c *Client) ListOwnership(ctx context.Context, kind, name string) ([]Ownership, error) {
+	q := url.Values{}
+	if kind != "" {
+		q.Set("kind", kind)
+	}
+	if name != "" {
+		q.Set("name", name)
+	}
+	var out struct {
+		Objects []Ownership `json:"objects"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/config/ownership", q, nil, &out); err != nil {
+		return nil, err
+	}
+	return out.Objects, nil
+}
+
+// ExportFilter narrows GET /config/export. Empty fields do not filter.
+type ExportFilter struct {
+	Kind, Name, Manager string
+}
+
+// Export returns the tenant's current state as a YAML stream of documents,
+// in dependency order, with secrets replaced by valueFrom.env placeholders.
+func (c *Client) Export(ctx context.Context, f ExportFilter) (string, error) {
+	q := url.Values{"format": {"yaml"}}
+	if f.Kind != "" {
+		q.Set("kind", f.Kind)
+	}
+	if f.Name != "" {
+		q.Set("name", f.Name)
+	}
+	if f.Manager != "" {
+		q.Set("manager", f.Manager)
+	}
+	raw, err := c.request(ctx, http.MethodGet, "/config/export", q, nil, "application/yaml")
+	if err != nil {
+		return "", err
+	}
+	return string(raw), nil
 }
 
 // Kinds is GET /config/kinds.

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -160,6 +161,7 @@ var (
 	_ = float64validator.AtLeast
 	_ = int64validator.AtLeast
 	_ = listvalidator.SizeAtLeast
+	_ = setvalidator.SizeAtLeast
 	_ = stringvalidator.OneOf
 	_ validator.String
 	_ = types.StringType

@@ -37,6 +37,10 @@ var reservedAttrs = map[string]bool{
 	"depends_on": true, "provisioner": true, "connection": true,
 }
 
+// commonNamePattern is common.schema.json's name pattern. A kind may
+// narrow it (AiProvider's slug), and then the message quotes the pattern.
+const commonNamePattern = "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+
 // privateImported marks state that came from ImportState, so the next Read
 // fills in every field the server has rather than only the managed ones.
 const privateImported = "imported"
@@ -80,8 +84,11 @@ func (r *kindResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 	} else {
 		v := []validator.String{stringvalidator.LengthAtMost(63)}
 		if r.spec.NamePattern != "" {
-			v = append(v, stringvalidator.RegexMatches(regexp.MustCompile(r.spec.NamePattern),
-				"must be lower case letters, digits and hyphens, starting and ending with a letter or digit"))
+			msg := "must match " + r.spec.NamePattern
+			if r.spec.NamePattern == commonNamePattern {
+				msg = "must be lower case letters, digits and hyphens, starting and ending with a letter or digit"
+			}
+			v = append(v, stringvalidator.RegexMatches(regexp.MustCompile(r.spec.NamePattern), msg))
 		}
 		attrs[attrName] = schema.StringAttribute{
 			MarkdownDescription: "The object's name (`metadata.name`), unique per kind within the tenant. Changing it replaces the object.",

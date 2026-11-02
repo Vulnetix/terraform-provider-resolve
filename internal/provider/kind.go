@@ -38,6 +38,8 @@ const (
 	fieldMap        // MapAttribute of Elem
 	fieldListObject // ListNestedAttribute; Children
 	fieldMapObject  // MapNestedAttribute; Children
+	fieldSet        // SetAttribute of Elem, for arrays whose order the server ignores
+	fieldSetObject  // SetNestedAttribute; Children
 	fieldJSON       // a JSON-encoded string for shapes HCL cannot type
 )
 

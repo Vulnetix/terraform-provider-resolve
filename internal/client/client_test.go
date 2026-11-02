@@ -14,7 +14,7 @@ import (
 func TestAuthorizationHeader(t *testing.T) {
 	for token, want := range map[string]string{
 		"vmt_abc":         "Bearer vmt_abc",
-		"org-uuid:abcdef": "ApiKey org-uuid:abcdef",
+		"eyJhbGciOi.jwt":  "Bearer eyJhbGciOi.jwt",
 		"":                "",
 	} {
 		if got := New(Options{Token: token}).authorization(); got != want {
@@ -35,7 +35,6 @@ func TestDefaults(t *testing.T) {
 
 func TestObjectRoundTrip(t *testing.T) {
 	var gotPath, gotBody, gotQuery string
-	bare := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath, gotQuery = r.URL.EscapedPath(), r.URL.RawQuery
 		b, _ := io.ReadAll(r.Body)
@@ -43,11 +42,7 @@ func TestObjectRoundTrip(t *testing.T) {
 		switch r.Method {
 		case http.MethodGet:
 			doc := `{"apiVersion":"vulnetix.com/v1","kind":"QualityGate","metadata":{"name":"default"},"spec":{"cooldownDays":9007199254740993}}`
-			if bare {
-				io.WriteString(w, doc)
-				return
-			}
-			io.WriteString(w, `{"document":`+doc+`,"manager":"gitops:acme/config","uuid":"u1"}`)
+			io.WriteString(w, `{"document":`+doc+`,"status":{"phase":"Applied","manager":"gitops:acme/config","objectUuid":"u1"}}`)
 		case http.MethodPut:
 			io.WriteString(w, `{"document":{"apiVersion":"vulnetix.com/v1","kind":"QualityGate","metadata":{"name":"default"},"spec":{}}}`)
 		case http.MethodDelete:
@@ -62,18 +57,12 @@ func TestObjectRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gotPath != "/config/objects/QualityGate/default" || o.Manager != "gitops:acme/config" || o.UUID != "u1" {
+	if gotPath != "/config/objects/QualityGate/default" || o.Status.Manager != "gitops:acme/config" || o.Status.ObjectUUID != "u1" {
 		t.Fatalf("path %s object %+v", gotPath, o)
 	}
 	// Integers survive above 2^53.
 	if n, _ := o.Document.Spec["cooldownDays"].(json.Number); n.String() != "9007199254740993" {
 		t.Fatalf("cooldownDays = %v", o.Document.Spec["cooldownDays"])
-	}
-
-	bare = true
-	o, err = c.GetObject(ctx, "QualityGate", "default")
-	if err != nil || o.Document.Kind != "QualityGate" {
-		t.Fatalf("bare document: %+v %v", o, err)
 	}
 
 	_, err = c.PutObject(ctx, Document{Kind: "QualityGate", Metadata: Metadata{Name: "default"}, Spec: map[string]any{"severity": "high"}})
@@ -109,10 +98,10 @@ func TestErrors(t *testing.T) {
 		t.Fatalf("404: %v", err)
 	}
 
-	status, body = http.StatusUnprocessableEntity, `{"error":"plan_blocked","message":"owned by gitops:acme/config","problems":[{"path":"spec.severity","message":"bad"}]}`
+	status, body = http.StatusUnprocessableEntity, `{"error":"plan_blocked","message":"owned by gitops:acme/config","problems":[{"index":0,"kind":"QualityGate","name":"default","message":"spec.severity: bad"}]}`
 	_, err := c.PutObject(context.Background(), Document{Kind: "QualityGate", Metadata: Metadata{Name: "default"}})
 	var ae *APIError
-	if !errors.As(err, &ae) || ae.Status != 422 || !strings.Contains(ae.Message, "plan_blocked: owned by gitops:acme/config") || !strings.Contains(ae.Message, "spec.severity bad") {
+	if !errors.As(err, &ae) || ae.Status != 422 || !strings.Contains(ae.Message, "plan_blocked: owned by gitops:acme/config") || !strings.Contains(ae.Message, "QualityGate/default spec.severity: bad") {
 		t.Fatalf("422: %v", err)
 	}
 

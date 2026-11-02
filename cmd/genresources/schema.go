@@ -26,6 +26,7 @@ type node struct {
 	Maximum     *json.Number     `json:"maximum"`
 	MinItems    *int64           `json:"minItems"`
 	MaxItems    *int64           `json:"maxItems"`
+	UniqueItems bool             `json:"uniqueItems"`
 	Properties  map[string]*node `json:"properties"`
 	Required    []string         `json:"required"`
 	AddlProps   json.RawMessage  `json:"additionalProperties"`
@@ -38,6 +39,22 @@ type node struct {
 	// file is the schema file this node was read from, for resolving its
 	// local "#/..." refs.
 	file string
+	// boolean is set for a boolean schema (true or false). The kind schemas
+	// use false inside oneOf branches to forbid a property, which only
+	// constrains values the server checks anyway, so the generator ignores it.
+	boolean *bool
+}
+
+// UnmarshalJSON accepts the boolean schemas 2020-12 allows wherever a schema
+// may appear, such as "properties": {"provider": false}.
+func (n *node) UnmarshalJSON(b []byte) error {
+	var v bool
+	if json.Unmarshal(b, &v) == nil {
+		*n = node{boolean: &v}
+		return nil
+	}
+	type plain node
+	return json.Unmarshal(b, (*plain)(n))
 }
 
 // types lists the node's declared types.
@@ -187,13 +204,20 @@ func (s *schemaSet) resolve(n *node) (*node, string, error) {
 		}
 		last = file + "#" + frag
 		// A $ref beside other keywords (description, default) keeps them:
-		// the kind's own description wins over the shared one.
+		// the kind's own description wins over the shared one, and so do a
+		// narrower pattern and a const.
 		merged := *target
 		if n.Description != "" {
 			merged.Description = n.Description
 		}
 		if n.Default != nil {
 			merged.Default = n.Default
+		}
+		if n.Pattern != "" {
+			merged.Pattern = n.Pattern
+		}
+		if n.Const != nil {
+			merged.Const = n.Const
 		}
 		n = &merged
 	}
@@ -208,7 +232,8 @@ func (s *schemaSet) flatten(n *node) (*node, string, error) {
 		return nil, "", err
 	}
 	if len(r.AllOf) == 0 {
-		return r, ref, nil
+		u, err := s.union(r)
+		return u, ref, err
 	}
 	out := *r
 	out.AllOf = nil
@@ -230,10 +255,18 @@ func (s *schemaSet) flatten(n *node) (*node, string, error) {
 		out.Required = append(out.Required, b.Required...)
 		for k, v := range b.Properties {
 			if cur, ok := out.Properties[k]; ok {
-				// Keep the stricter, later layer but not lose a ref target.
+				// Keep the stricter, later layer but not lose a ref target: a
+				// const name (singletonMetadata) or a narrower pattern and its
+				// description (AiProvider's slug).
 				c := *cur
 				if v.Const != nil {
 					c.Const = v.Const
+				}
+				if v.Pattern != "" {
+					c.Pattern = v.Pattern
+				}
+				if v.Description != "" {
+					c.Description = v.Description
 				}
 				out.Properties[k] = &c
 				continue
@@ -244,7 +277,80 @@ func (s *schemaSet) flatten(n *node) (*node, string, error) {
 			out.AddlProps = b.AddlProps
 		}
 	}
-	return &out, ref, nil
+	u, err := s.union(&out)
+	return u, ref, err
+}
+
+// union folds an untyped oneOf or anyOf whose branches share a shape into one
+// node, so it can be typed instead of carried as JSON:
+//
+//   - branches that are all strings (RiskStrategy metric: three enum refs; a
+//     PackageList purl: two patterns) become one string, its enum the union
+//     when every branch is an enum;
+//   - branches that are all objects with properties (RemediationPolicy spec:
+//     a standard, or custom windows) become one object with every branch's
+//     properties, none required, since which are required depends on the
+//     branch. The server checks the branch.
+//
+// A node with its own type or properties keeps them; its oneOf only
+// constrains them (VexSource spec: name exactly one source).
+func (s *schemaSet) union(n *node) (*node, error) {
+	branches := n.OneOf
+	if len(branches) == 0 {
+		branches = n.AnyOf
+	}
+	if len(branches) == 0 || len(n.types()) > 0 || len(n.Properties) > 0 || len(n.Enum) > 0 || n.Const != nil {
+		return n, nil
+	}
+	var flat []*node
+	strs, objs := true, true
+	for _, b := range branches {
+		f, _, err := s.flatten(b)
+		if err != nil {
+			return nil, err
+		}
+		flat = append(flat, f)
+		isStr := f.hasType("string") && len(f.types()) == 1 || (len(f.types()) == 0 && len(f.Properties) == 0 && (len(f.Enum) > 0 || f.Const != nil) && constType(append([]any{f.Const}, f.Enum...)) == "string")
+		strs = strs && isStr
+		objs = objs && len(f.Properties) > 0 && (len(f.types()) == 0 || f.hasType("object"))
+	}
+	out := *n
+	out.OneOf, out.AnyOf = nil, nil
+	switch {
+	case strs:
+		out.Type = json.RawMessage(`"string"`)
+		allEnum := true
+		var enum []any
+		for _, f := range flat {
+			vals := append([]any{}, f.Enum...)
+			if f.Const != nil {
+				vals = append(vals, f.Const)
+			}
+			if len(vals) == 0 {
+				allEnum = false
+			}
+			enum = append(enum, vals...)
+		}
+		if allEnum {
+			out.Enum = enum
+		}
+		return &out, nil
+	case objs:
+		out.Type = json.RawMessage(`"object"`)
+		out.Properties = map[string]*node{}
+		for _, f := range flat {
+			for k, v := range f.Properties {
+				if _, dup := out.Properties[k]; !dup {
+					out.Properties[k] = v
+				}
+			}
+			if len(out.AddlProps) == 0 {
+				out.AddlProps = f.AddlProps
+			}
+		}
+		return &out, nil
+	}
+	return n, nil
 }
 
 // isValueFrom reports whether a property is a secret: a valueFrom

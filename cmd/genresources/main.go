@@ -10,7 +10,8 @@
 // Each kind becomes zz_generated_<kind>.go holding a kindSpec: the framework
 // schema attributes and the field map between them and the document spec.
 // A valueFrom secret becomes a write-only <name>_wo argument and a
-// <name>_wo_version trigger.
+// <name>_wo_version trigger. An array is a list or a set as collections.go
+// decides, and a validate-only kind (validateOnly) gets no resource.
 //
 // -schemas reads a directory instead, which the tests use to generate a test
 // kind with every supported shape.
@@ -79,12 +80,17 @@ func run(args []string) error {
 	if err := removeStale(*out, *suffix); err != nil {
 		return err
 	}
+	allServed := *dir != ""
 	var outs []*kindOut
 	for _, k := range kinds {
+		if _, skip := validateOnly[k]; skip {
+			continue
+		}
 		o, err := g.generate(k)
 		if err != nil {
 			return err
 		}
+		o.Served = allServed || served[k]
 		outs = append(outs, o)
 		if err := os.WriteFile(filepath.Join(*out, "zz_generated_"+o.TypeName+*suffix+".go"), o.Source, 0o644); err != nil {
 			return err

@@ -89,7 +89,7 @@ func (f *fakeAPI) object(w http.ResponseWriter, r *http.Request, key string) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"document": d, "manager": "terraform"})
+		writeJSON(w, http.StatusOK, map[string]any{"document": d, "status": map[string]any{"phase": "Applied", "manager": "terraform"}})
 	case http.MethodPut:
 		var body struct {
 			Document client.Document `json:"document"`
@@ -119,7 +119,7 @@ func (f *fakeAPI) object(w http.ResponseWriter, r *http.Request, key string) {
 		cur.Metadata = body.Document.Metadata
 		mergeSpec(cur.Spec, body.Document.Spec)
 		f.objects[key] = cur
-		writeJSON(w, http.StatusOK, map[string]any{"document": cur, "manager": body.Manager})
+		writeJSON(w, http.StatusOK, map[string]any{"document": cur, "action": "update", "status": map[string]any{"phase": "Applied", "manager": body.Manager}})
 	case http.MethodDelete:
 		f.deletes = append(f.deletes, key+"?manager="+r.URL.Query().Get("manager"))
 		if _, ok := f.objects[key]; !ok {
@@ -173,7 +173,7 @@ func testFactories() map[string]func() (tfprotov6.ProviderServer, error) {
 	return map[string]func() (tfprotov6.ProviderServer, error){
 		"vulnetix": providerserver.NewProtocol6WithError(&vulnetixProvider{
 			version: "test",
-			kinds:   append(append([]kindSpec{}, generatedKinds...), testKinds...),
+			kinds:   append(append(append([]kindSpec{}, generatedKinds...), generatedKindsUnserved...), testKinds...),
 		}),
 	}
 }
