@@ -57,8 +57,7 @@ resource "vulnetix_vex_source" "vendor_tea_product" {
     server  = "https://tea.acme.example"
   }
   trust = {
-    allowed_authors   = ["security@acme.example"]
-    require_signature = true
+    allowed_authors = ["security@acme.example"]
   }
   labels = {
     team = "product-security"
@@ -73,9 +72,6 @@ resource "vulnetix_vex_source" "vendor_tea_release" {
   format = "cyclonedx"
   refresh = {
     interval = "1d"
-  }
-  scope = {
-    products = ["urn:tei:uuid:products.acme.example:7f3c1a52-1b8e-4d0e-9c3f-2a6b8e5d4c10"]
   }
   tea = {
     product_release = "urn:tei:uuid:products.acme.example:4b2e9d17-6a3c-4f81-b5d0-8e1c7a9f2d36"
@@ -113,17 +109,17 @@ resource "vulnetix_vex_source" "vex_bucket" {
   }
 }
 
-resource "vulnetix_vex_source" "vex_r2_object" {
-  name   = "vex-r2-object"
+resource "vulnetix_vex_source" "vex_bucket_object" {
+  name   = "vex-bucket-object"
   format = "openvex"
   refresh = {
     interval = "30m"
   }
   s_3 = {
-    bucket         = "acme-vex-public"
-    credential_ref = "r2-vex-reader"
-    endpoint       = "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com"
-    key            = "products/ledger/ledger.openvex.json"
+    bucket   = "acme-vex-public"
+    key      = "products/ledger/ledger.openvex.json"
+    region   = "us-east-1"
+    role_arn = "arn:aws:iam::123456789012:role/VulnetixVexRead"
   }
 }
 
@@ -136,8 +132,7 @@ resource "vulnetix_vex_source" "platform_repo" {
     url            = "https://github.com/acme/security-advisories.git"
   }
   scope = {
-    products = ["7f3c1a52-1b8e-4d0e-9c3f-2a6b8e5d4c10"]
-    repos    = ["acme/payments-api", "acme/ledger"]
+    repos = ["acme/payments-api", "acme/ledger"]
   }
 }
 

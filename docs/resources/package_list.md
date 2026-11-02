@@ -126,7 +126,7 @@ Optional:
 
 - `reason` (String) Why the decision was made, for the people who review the list.
 - `scope` (String) What an allow entry waives. full: every policy block. bad_actor: only a bad-actor attribution, for an operator who judged that attribution a false positive. A deny entry is always full. One of `full`, `bad_actor`. Schema default: `full`.
-- `when` (String) A CEL condition over the package variables (purl, ecosystem, name, version, published, ageDays, versionLag, malware, cvss, epss, cess, kev, eol, exploitMaturity, badActor, now). The entry applies only to versions for which it is true: a deny entry blocks only those versions, an allow entry waives only for them. Left out, the entry applies to every version it names. A CEL expression, evaluated in the `package` environment.
+- `when` (String) A CEL condition over the package variables (purl, ecosystem, name, version, published, ageDays, versionLag, malware, cvss, epss, cess, kev, eol, exploitMaturity, badActor, now). The entry applies only to versions for which it is true: a deny entry blocks only those versions, an allow entry waives only for them. Left out, the entry applies to every version it names. An entry whose condition fails to evaluate is skipped and logged: a deny entry does not block and an allow entry does not waive. A CEL expression, evaluated in the `package` environment.
 
 
 <a id="nestedatt--status"></a>

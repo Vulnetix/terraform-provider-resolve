@@ -82,6 +82,7 @@ The provider authenticates with a config management token (`vmt_...`), sent as `
 | [`vulnetix_package_firewall_policy`](resources/package_firewall_policy) | PackageFirewallPolicy, one per tenant |
 | [`vulnetix_package_list`](resources/package_list) | PackageList |
 | [`vulnetix_quality_gate`](resources/quality_gate) | QualityGate, one per tenant |
+| [`vulnetix_registry_connection`](resources/registry_connection) | RegistryConnection |
 | [`vulnetix_remediation_policy`](resources/remediation_policy) | RemediationPolicy, one per tenant |
 | [`vulnetix_repository_settings`](resources/repository_settings) | RepositorySettings |
 | [`vulnetix_risk_strategy`](resources/risk_strategy) | RiskStrategy |
@@ -92,6 +93,7 @@ The provider authenticates with a config management token (`vmt_...`), sent as `
 | [`vulnetix_scanner_profile`](resources/scanner_profile) | ScannerProfile, one per tenant |
 | [`vulnetix_scheduled_report`](resources/scheduled_report) | ScheduledReport |
 | [`vulnetix_service_account`](resources/service_account) | ServiceAccount, owner token |
+| [`vulnetix_ssvc_policy`](resources/ssvc_policy) | SsvcPolicy, one per tenant |
 | [`vulnetix_suppression`](resources/suppression) | Suppression |
 | [`vulnetix_tea_access_policy`](resources/tea_access_policy) | TeaAccessPolicy |
 | [`vulnetix_tea_collection`](resources/tea_collection) | TeaCollection |

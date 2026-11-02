@@ -144,7 +144,7 @@ Optional:
 - `target_pattern` (String) GOAL only, and required there: a path.Match glob over the identifier of each fact (a purl, a package name, a rule id).
 - `threshold_high` (Number) The upper bound for BETWEEN and OUTSIDE; required by them. It must not be below thresholdLow.
 - `tool_name` (String) Only findings reported by this tool.
-- `when` (String) An extra condition each fact must meet to be counted, over the finding variables. A CEL expression, evaluated in the `finding` environment.
+- `when` (String) An extra condition each fact must meet to be counted, over the finding variables. A when that does not compile, or that uses a finding variable the facts of the rule kind do not carry yet, skips the rule with a warning. A fact it fails on leaves the rule indeterminate (verdict indeterminate, CLI exit 3). The factory gate fails closed instead: the rule breaches. A CEL expression, evaluated in the `finding` environment.
 
 
 <a id="nestedatt--status"></a>

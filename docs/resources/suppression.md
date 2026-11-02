@@ -83,7 +83,7 @@ resource "vulnetix_suppression" "lodash_template_not_reachable" {
 - `justification` (String) Why the product is not affected, in the OpenVEX vocabulary, for VEX documents minted from this rule. One of `component_not_present`, `vulnerable_code_not_present`, `vulnerable_code_not_in_execute_path`, `vulnerable_code_cannot_be_controlled_by_adversary`, `inline_mitigations_already_exist`.
 - `labels` (Map of String) Free key/value labels (`metadata.labels`). Stored with the object, never interpreted by the server.
 - `reason` (String) Why, for the people who review suppressions.
-- `when` (String) An extra condition a finding must meet, over the finding variables. A CEL expression, evaluated in the `finding` environment.
+- `when` (String) An extra condition a finding must meet, over the finding variables. It fails open: a finding the expression fails on is not suppressed, and a rule that cannot be evaluated covers nothing and is logged. A CEL expression, evaluated in the `finding` environment.
 
 ### Read-Only
 

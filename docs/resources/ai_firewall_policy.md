@@ -228,7 +228,7 @@ Optional:
 - `enabled` (Boolean) Schema default: `true`.
 - `pattern` (String) What the rule matches. blocked_pattern: an RE2 regex, required (RE2 has no lookahead or lookbehind). pii_redact: an RE2 regex, or empty for the built-in detectors. max_messages: a positive integer, required. delimiter_integrity: none. Capability rules: a name or * glob, required, anchors implied.
 - `priority` (Number) Evaluation order, lowest first.
-- `when` (String) A CEL condition over the request variables (provider, model, client, tools, mcpServers, skills, now). The rule applies only to requests for which it is true; left out, it applies to every request. For an expression rule it is the match itself, and is required. A CEL expression, evaluated in the `request` environment.
+- `when` (String) A CEL condition over the request variables (provider, model, client, tools, mcpServers, skills, now). The rule applies only to requests for which it is true; left out, it applies to every request. For an expression rule it is the match itself, and is required. A rule whose condition fails to evaluate is skipped and named in the decision's skipped list. A CEL expression, evaluated in the `request` environment.
 
 
 <a id="nestedatt--hold_policy"></a>

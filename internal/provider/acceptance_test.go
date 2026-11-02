@@ -131,6 +131,8 @@ func TestAccScannerProfile(t *testing.T)        { testAccKind(t, "ScannerProfile
 func TestAccScheduledReport(t *testing.T)       { testAccKind(t, "ScheduledReport") }
 func TestAccServiceAccount(t *testing.T)        { testAccKind(t, "ServiceAccount") }
 func TestAccSuppression(t *testing.T)           { testAccKind(t, "Suppression") }
+func TestAccRegistryConnection(t *testing.T)    { testAccKind(t, "RegistryConnection") }
+func TestAccSsvcPolicy(t *testing.T)            { testAccKind(t, "SsvcPolicy") }
 func TestAccTeaAccessPolicy(t *testing.T)       { testAccKind(t, "TeaAccessPolicy") }
 func TestAccTeaCollection(t *testing.T)         { testAccKind(t, "TeaCollection") }
 func TestAccTeaComponent(t *testing.T)          { testAccKind(t, "TeaComponent") }

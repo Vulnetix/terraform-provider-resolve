@@ -145,7 +145,7 @@ Optional:
 - `operator` (String) IS_TRUE for a present-or-not metric. GTE, GT, LTE and LT compare a score with thresholdLow; BETWEEN tests thresholdLow <= score <= thresholdHigh. ALWAYS matches everything, for REMAINING. One of `IS_TRUE`, `GTE`, `GT`, `LTE`, `LT`, `BETWEEN`, `ALWAYS`.
 - `threshold_high` (Number)
 - `threshold_low` (Number)
-- `when` (String) The condition of a CEL rule, over the finding variables. A CEL expression, evaluated in the `finding` environment.
+- `when` (String) The condition of a CEL rule, over the finding variables. It fails open: a finding the expression fails on does not match, and a rule that does not compile matches nothing and is logged. A CEL expression, evaluated in the `finding` environment.
 
 
 <a id="nestedatt--status"></a>

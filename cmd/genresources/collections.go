@@ -57,6 +57,8 @@ var collections = map[string]collection{
 	//
 	// Lists keep the order the document gives, which the store reads back
 	// unchanged because it holds the document as JSON.
+	"SsvcPolicy.spec.mapping":                 {true, "schema: when several mapping rules match a cell the last one wins, so order is meaning; ssvcpolicy.go keeps the rules as written."},
+	"SsvcPolicy.spec.overrides":               {true, "schema: the first override that holds sets the outcome, so order is meaning; ssvcpolicy.go keeps the rules as written."},
 	"Campaign.spec.done.criteria":             {true, "campaign.go stores the done criteria as versioned JSON and reads them back in the order written."},
 	"Crew.spec.members":                       {true, "crew.go keeps the members as the library item stores them, in the order written; a crew is composed in that order."},
 	"FactoryWorkflow.spec.graph.nodes":        {true, "factoryworkflow.go stores the graph as the version's canonical JSON; the console normaliser keeps node and edge order."},
@@ -132,10 +134,11 @@ var collections = map[string]collection{
 var renames = map[string]string{
 	// The resource's own name is metadata.name; the campaign's title, as the
 	// console shows it, is spec.name.
-	"Campaign.spec.name":          "display_name",
-	"FactoryBudget.spec.provider": "model_providers",
-	"TeaComponent.spec.name":      "component_name",
-	"TeaProduct.spec.name":        "product_name",
-	"VaultEntry.spec.name":        "entry_name",
-	"VaultEntry.spec.provider":    "provider_slug",
+	"Campaign.spec.name":             "display_name",
+	"FactoryBudget.spec.provider":    "model_providers",
+	"RepositorySettings.spec.labels": "asset_labels",
+	"TeaComponent.spec.name":         "component_name",
+	"TeaProduct.spec.name":           "product_name",
+	"VaultEntry.spec.name":           "entry_name",
+	"VaultEntry.spec.provider":       "provider_slug",
 }
