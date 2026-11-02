@@ -1,22 +1,28 @@
 package provider
 
 import (
-	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 // Acceptance tests run against a real server and change the tenant's
-// configuration: destroy deletes its QualityGate. Point them at a test
-// tenant only.
+// configuration: each creates, updates, imports and destroys the objects in
+// its kind's examples (examples/resources/vulnetix_<kind>), including
+// singletons such as the QualityGate. Point them at a test tenant only.
 //
 //	TF_ACC=1 VULNETIX_ENDPOINT=https://www.vulnetix.com/api/site/v1 \
 //	VULNETIX_CONFIG_TOKEN=vmt_... go test ./internal/provider -run TestAcc
+//
+// The token needs the owner or admin role and every served kind. Run the
+// same suite under OpenTofu with TF_ACC_TERRAFORM_PATH=$(which tofu) and
+// TF_ACC_PROVIDER_NAMESPACE=vulnetix.
 //
 // resource.Test skips them without TF_ACC; accPreCheck skips them without
 // the server settings, so TF_ACC alone never aims them at production.
@@ -36,6 +42,26 @@ func accFactories() map[string]func() (tfprotov6.ProviderServer, error) {
 	}
 }
 
+// testAccKind runs one served kind's example lifecycle against the server
+// named by the environment: create, plan-empty, update, import, destroy.
+func testAccKind(t *testing.T, kind string) {
+	t.Helper()
+	var spec *kindSpec
+	for i := range generatedKinds {
+		if generatedKinds[i].Kind == kind {
+			spec = &generatedKinds[i]
+		}
+	}
+	if spec == nil {
+		t.Fatalf("%s is not a served kind", kind)
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { accPreCheck(t) },
+		ProtoV6ProviderFactories: accFactories(),
+		Steps:                    exampleSteps(t, *spec, "provider \"vulnetix\" {}\n", nil),
+	})
+}
+
 func TestAccKinds(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { accPreCheck(t) },
@@ -50,50 +76,34 @@ func TestAccKinds(t *testing.T) {
 	})
 }
 
-func TestAccQualityGate(t *testing.T) {
-	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { accPreCheck(t) },
-		ProtoV6ProviderFactories: accFactories(),
-		Steps: []resource.TestStep{
-			{
-				Config: `
-resource "vulnetix_quality_gate" "acc" {
-  severity      = "critical"
-  block_malware = true
-  cooldown_days = 3
-  eol = {
-    block      = true
-    severities = { retired = "critical" }
-  }
-  sca_autofix = { strategy = "safest", max_major_bump = 0 }
-}
-`,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("vulnetix_quality_gate.acc", "id", "default"),
-					resource.TestCheckResourceAttr("vulnetix_quality_gate.acc", "severity", "critical"),
-				),
-			},
-			{
-				Config: `
-resource "vulnetix_quality_gate" "acc" {
-  severity      = "high"
-  block_malware = true
-  cooldown_days = 3
-}
-`,
-				Check: resource.TestCheckResourceAttr("vulnetix_quality_gate.acc", "severity", "high"),
-			},
-			{
-				ResourceName:  "vulnetix_quality_gate.acc",
-				ImportState:   true,
-				ImportStateId: "default",
-				ImportStateCheck: func(s []*terraform.InstanceState) error {
-					if len(s) != 1 || s[0].Attributes["severity"] != "high" || s[0].Attributes["block_malware"] != "true" {
-						return fmt.Errorf("imported %v", s)
-					}
-					return nil
-				},
-			},
-		},
-	})
+func TestAccAiFirewallPolicy(t *testing.T)      { testAccKind(t, "AiFirewallPolicy") }
+func TestAccAiGovernanceList(t *testing.T)      { testAccKind(t, "AiGovernanceList") }
+func TestAccAiProvider(t *testing.T)            { testAccKind(t, "AiProvider") }
+func TestAccApiSpecSource(t *testing.T)         { testAccKind(t, "ApiSpecSource") }
+func TestAccJailExemption(t *testing.T)         { testAccKind(t, "JailExemption") }
+func TestAccJailPolicy(t *testing.T)            { testAccKind(t, "JailPolicy") }
+func TestAccMalwareIoc(t *testing.T)            { testAccKind(t, "MalwareIoc") }
+func TestAccPackageFirewallPolicy(t *testing.T) { testAccKind(t, "PackageFirewallPolicy") }
+func TestAccPackageList(t *testing.T)           { testAccKind(t, "PackageList") }
+func TestAccQualityGate(t *testing.T)           { testAccKind(t, "QualityGate") }
+func TestAccVexSource(t *testing.T)             { testAccKind(t, "VexSource") }
+
+// Every served kind has its TestAcc<Kind>, so a newly served kind cannot
+// ship without an acceptance test.
+func TestEveryServedKindHasAcceptanceTest(t *testing.T) {
+	f, err := parser.ParseFile(token.NewFileSet(), "acceptance_test.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	have := map[string]bool{}
+	for _, d := range f.Decls {
+		if fn, ok := d.(*ast.FuncDecl); ok {
+			have[fn.Name.Name] = true
+		}
+	}
+	for _, k := range generatedKinds {
+		if !have["TestAcc"+k.Kind] {
+			t.Errorf("served kind %s has no TestAcc%s in acceptance_test.go", k.Kind, k.Kind)
+		}
+	}
 }

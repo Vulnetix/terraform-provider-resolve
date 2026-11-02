@@ -96,7 +96,7 @@ func (f *fakeAPI) object(w http.ResponseWriter, r *http.Request, key string) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"document": d, "status": map[string]any{"phase": "Applied", "manager": "terraform"}})
+		writeJSON(w, http.StatusOK, map[string]any{"document": redacted(d), "status": map[string]any{"phase": "Applied", "manager": "terraform"}})
 	case http.MethodPut:
 		var body struct {
 			Document client.Document `json:"document"`
@@ -124,9 +124,13 @@ func (f *fakeAPI) object(w http.ResponseWriter, r *http.Request, key string) {
 			}
 		}
 		cur.Metadata = body.Document.Metadata
-		mergeSpec(cur.Spec, body.Document.Spec)
+		if replaceKinds[body.Document.Kind] {
+			cur.Spec = body.Document.Spec
+		} else {
+			mergeSpec(cur.Spec, body.Document.Spec)
+		}
 		f.objects[key] = cur
-		writeJSON(w, http.StatusOK, map[string]any{"document": cur, "action": "update", "status": map[string]any{"phase": "Applied", "manager": body.Manager}})
+		writeJSON(w, http.StatusOK, map[string]any{"document": redacted(cur), "action": "update", "status": map[string]any{"phase": "Applied", "manager": body.Manager}})
 	case http.MethodDelete:
 		f.deletes = append(f.deletes, key+"?manager="+r.URL.Query().Get("manager"))
 		if _, ok := f.objects[key]; !ok {
@@ -180,7 +184,7 @@ func testFactories() map[string]func() (tfprotov6.ProviderServer, error) {
 	return map[string]func() (tfprotov6.ProviderServer, error){
 		"vulnetix": providerserver.NewProtocol6WithError(&vulnetixProvider{
 			version: "test",
-			kinds:   append(append(append([]kindSpec{}, generatedKinds...), generatedKindsUnserved...), testKinds...),
+			kinds:   allTestKinds(),
 		}),
 	}
 }
@@ -238,3 +242,45 @@ func atoiOr(s string, def int) int {
 	}
 	return def
 }
+
+// redacted is a document as the engine answers it (config redactSpec): every
+// secret replaced by a valueFrom placeholder, so a secret is never read back.
+func redacted(d client.Document) client.Document {
+	b, _ := json.Marshal(d)
+	var out client.Document
+	dec := json.NewDecoder(strings.NewReader(string(b)))
+	dec.UseNumber()
+	_ = dec.Decode(&out)
+	for _, k := range allTestKinds() {
+		if k.Kind == d.Kind {
+			redactFields(out.Spec, k.Fields, "VULNETIX_"+strings.ToUpper(k.TypeName))
+		}
+	}
+	return out
+}
+
+func redactFields(spec map[string]any, fields []field, env string) {
+	for _, f := range fields {
+		v, ok := spec[f.JSON]
+		if !ok {
+			continue
+		}
+		switch {
+		case f.WriteOnly:
+			spec[f.JSON] = map[string]any{"valueFrom": map[string]any{"env": env + "_" + strings.ToUpper(f.JSON)}}
+		case f.Kind == fieldObject:
+			if m, ok := v.(map[string]any); ok {
+				redactFields(m, f.Children, env+"_"+strings.ToUpper(f.JSON))
+			}
+		}
+	}
+}
+
+func allTestKinds() []kindSpec {
+	return append(append(append([]kindSpec{}, generatedKinds...), generatedKindsUnserved...), testKinds...)
+}
+
+// replaceKinds are the kinds whose engine adapter overwrites the whole spec
+// on apply (Diff "with replace semantics": apispecsource.go, malwareioc.go,
+// vexsource.go) instead of merging into it.
+var replaceKinds = map[string]bool{"ApiSpecSource": true, "MalwareIoc": true, "VexSource": true}
