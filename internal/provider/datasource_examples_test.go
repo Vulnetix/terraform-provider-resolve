@@ -27,7 +27,9 @@ func TestDataSourceExamples(t *testing.T) {
 	)
 	f.entries["f5"] = f.entries["f1"]
 	f.models = []client.AiModel{{UUID: "m1", Slug: "claude-sonnet-4", Name: "Claude Sonnet 4", ProviderSlug: "anthropic", IsActive: true}}
-	f.vex = []map[string]any{{"subjectKey": "s1", "at": 1, "subjectLabel": "CVE-2026-1 · lib", "outcome": "not_affected"}}
+	f.vex = []map[string]any{{"uuid": "s1", "vulnerabilityId": "CVE-2026-1", "status": "not_affected", "justification": "component_not_present",
+		"aliases": []string{}, "purls": []string{"pkg:npm/lodash@4.17.21"}, "products": []any{}, "timestamp": 1}}
+	f.repos = []client.GitHubRepo{{InstallationID: 1, AccountLogin: "acme", OwnerLogin: "acme", Name: "api", FullName: "acme/api", Host: "github.com"}}
 
 	for _, newDS := range New("test")().DataSources(context.Background()) {
 		var md datasource.MetadataResponse

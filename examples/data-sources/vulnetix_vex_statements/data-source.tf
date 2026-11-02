@@ -1,9 +1,10 @@
-# The tenant's not_affected statements, newest first.
-data "vulnetix_vex_statements" "not_affected" {
+# The tenant's not_affected statements about one package, newest first.
+data "vulnetix_vex_statements" "lodash" {
   status = "not_affected"
+  purl   = "pkg:npm/lodash"
   limit  = 200
 }
 
-output "not_affected_vulnerabilities" {
-  value = distinct([for s in data.vulnetix_vex_statements.not_affected.statements : s.vulnerability_id])
+output "lodash_not_affected" {
+  value = { for s in data.vulnetix_vex_statements.lodash.statements : s.vulnerability_id => s.justification }
 }

@@ -2,8 +2,10 @@ package provider
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,6 +35,7 @@ type fakeAPI struct {
 	locked   bool
 	models   []client.AiModel
 	vex      []map[string]any
+	repos    []client.GitHubRepo
 }
 
 func newFakeAPI(t *testing.T) (*fakeAPI, *httptest.Server) {
@@ -64,8 +67,10 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 	case p == "/ai-firewall/models" && r.Method == http.MethodGet:
 		f.aiModels(w, r)
-	case p == "/review/decisions" && r.Method == http.MethodGet:
-		f.decisions(w, r)
+	case p == "/vex/statements" && r.Method == http.MethodGet:
+		f.vexStatements(w, r)
+	case p == "/integrations/github/installations/repos" && r.Method == http.MethodGet:
+		f.githubRepos(w, r)
 	case strings.HasPrefix(p, "/config/objects/"):
 		f.object(w, r, strings.TrimPrefix(p, "/config/objects/"))
 	case p == "/detection-rule-feeds" && r.Method == http.MethodGet:
@@ -216,26 +221,6 @@ func (f *fakeAPI) aiModels(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"models": match[from:to], "total": len(match), "page": page, "perPage": per})
 }
 
-// decisions pages like ReviewDecisions for kind=vex.
-func (f *fakeAPI) decisions(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	if q.Get("kind") != "vex" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "the fake serves kind=vex only"})
-		return
-	}
-	var match []map[string]any
-	for _, e := range f.vex {
-		if o := q.Get("outcome"); o != "" && e["outcome"] != o {
-			continue
-		}
-		match = append(match, e)
-	}
-	page, per := atoiOr(q.Get("page"), 1), atoiOr(q.Get("perPage"), 25)
-	from, to := min((page-1)*per, len(match)), min(page*per, len(match))
-	writeJSON(w, http.StatusOK, map[string]any{"entries": match[from:to],
-		"pagination": map[string]int{"page": page, "perPage": per, "totalRows": len(match), "totalPages": (len(match) + per - 1) / per}})
-}
-
 func atoiOr(s string, def int) int {
 	if n, err := strconv.Atoi(s); err == nil && n > 0 {
 		return n
@@ -282,5 +267,50 @@ func allTestKinds() []kindSpec {
 
 // replaceKinds are the kinds whose engine adapter overwrites the whole spec
 // on apply (Diff "with replace semantics": apispecsource.go, malwareioc.go,
-// vexsource.go) instead of merging into it.
-var replaceKinds = map[string]bool{"ApiSpecSource": true, "MalwareIoc": true, "VexSource": true}
+// remediationpolicy.go, riskstrategy.go, suppression.go, vexsource.go)
+// instead of merging into it.
+var replaceKinds = map[string]bool{
+	"ApiSpecSource": true, "MalwareIoc": true, "RemediationPolicy": true,
+	"RiskStrategy": true, "Suppression": true, "VexSource": true,
+}
+
+// page cuts one page like the vdb-site list routes (paginationOf).
+func page[T any](q url.Values, items []T) ([]T, map[string]int) {
+	p, per := atoiOr(q.Get("page"), 1), atoiOr(q.Get("perPage"), 100)
+	from, to := min((p-1)*per, len(items)), min(p*per, len(items))
+	return items[from:to], map[string]int{"page": p, "perPage": per, "totalRows": len(items), "totalPages": (len(items) + per - 1) / per}
+}
+
+// vexStatements filters like VexStatementsList: status, vulnerabilityId.
+func (f *fakeAPI) vexStatements(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	var match []map[string]any
+	for _, s := range f.vex {
+		if v := q.Get("status"); v != "" && s["status"] != v {
+			continue
+		}
+		if v := q.Get("vulnerabilityId"); v != "" && !strings.EqualFold(fmt.Sprint(s["vulnerabilityId"]), v) {
+			continue
+		}
+		match = append(match, s)
+	}
+	items, p := page(q, match)
+	writeJSON(w, http.StatusOK, map[string]any{"statements": items, "pagination": p})
+}
+
+// githubRepos filters like GitHubInstallationReposList: installationId, q.
+func (f *fakeAPI) githubRepos(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	var match []client.GitHubRepo
+	for _, g := range f.repos {
+		if v := q.Get("installationId"); v != "" && fmt.Sprint(g.InstallationID) != v {
+			continue
+		}
+		if v := strings.ToLower(q.Get("q")); v != "" && !strings.Contains(strings.ToLower(g.FullName), v) {
+			continue
+		}
+		match = append(match, g)
+	}
+	items, p := page(q, match)
+	writeJSON(w, http.StatusOK, map[string]any{"repos": items, "pagination": p})
+}

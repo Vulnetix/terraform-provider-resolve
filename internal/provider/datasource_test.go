@@ -145,29 +145,66 @@ data "vulnetix_ai_models" "p2" { provider_uuid = "p2" }
 
 func TestVexStatementsDataSource(t *testing.T) {
 	f, srv := newFakeAPI(t)
-	for i := 0; i < 120; i++ {
-		f.vex = append(f.vex, map[string]any{"kind": "vex", "at": 1767225600000 + i, "subjectKey": fmt.Sprintf("s%d", i),
-			"findingUuid": "", "subjectLabel": fmt.Sprintf("CVE-2026-%04d · lib", i), "outcome": "not_affected",
-			"justification": "component_not_present", "detail": "", "repoName": "", "actor": "sec@acme.example", "automated": false})
+	for i := 0; i < 1200; i++ {
+		f.vex = append(f.vex, map[string]any{"uuid": fmt.Sprintf("s%d", i), "documentUuid": "d1", "documentId": "urn:x",
+			"author": "sec@acme.example", "vulnerabilityId": fmt.Sprintf("CVE-2026-%04d", i), "vulnerabilityName": "lib",
+			"aliases": []string{"GHSA-x"}, "status": "not_affected", "justification": "component_not_present",
+			"products": []map[string]any{{"@id": "pkg:npm/lib@1.0.0"}}, "purls": []string{"pkg:npm/lib@1.0.0"},
+			"timestamp": 1767225600000 + i, "grounded": true, "sourceFormat": "openvex", "repositoryFullName": "acme/api"})
 	}
-	f.vex = append(f.vex, map[string]any{"subjectKey": "fx", "at": 1, "subjectLabel": "GHSA-xxxx", "outcome": "fixed", "actor": "a"})
+	f.vex = append(f.vex, map[string]any{"uuid": "inv", "vulnerabilityId": "CVE-2026-9999", "status": "under_investigation",
+		"aliases": []string{}, "purls": []string{}, "timestamp": 1})
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: testFactories(),
 		Steps: []resource.TestStep{{
 			Config: providerBlock(srv.URL) + `
-data "vulnetix_vex_statements" "all" {}
+data "vulnetix_vex_statements" "default_limit" {}
 data "vulnetix_vex_statements" "few" { limit = 5 }
-data "vulnetix_vex_statements" "fixed" { status = "fixed" }
+data "vulnetix_vex_statements" "inv" { status = "under_investigation" }
+data "vulnetix_vex_statements" "one" { vulnerability_id = "cve-2026-0007" }
 `,
 			Check: resource.ComposeAggregateTestCheckFunc(
-				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.all", "statements.#", "121"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.default_limit", "statements.#", "1000"),
 				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.few", "statements.#", "5"),
-				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.all", "statements.0.vulnerability_id", "CVE-2026-0000"),
-				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.all", "statements.0.vulnerability_name", "lib"),
-				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.all", "statements.0.timestamp", "1767225600000"),
-				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.fixed", "statements.#", "1"),
-				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.fixed", "statements.0.vulnerability_id", "GHSA-xxxx"),
-				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.fixed", "statements.0.vulnerability_name", ""),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.inv", "statements.#", "1"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.inv", "statements.0.products", "null"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.one", "statements.#", "1"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.one", "statements.0.vulnerability_id", "CVE-2026-0007"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.one", "statements.0.purls.0", "pkg:npm/lib@1.0.0"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.one", "statements.0.aliases.0", "GHSA-x"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.one", "statements.0.products", `[{"@id":"pkg:npm/lib@1.0.0"}]`),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.one", "statements.0.repository", "acme/api"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.one", "statements.0.timestamp", "1767225600007"),
+			),
+		}},
+	})
+}
+
+func TestGitHubInstallationReposDataSource(t *testing.T) {
+	f, srv := newFakeAPI(t)
+	for i := 0; i < 600; i++ {
+		f.repos = append(f.repos, client.GitHubRepo{InstallationID: 1, AccountLogin: "acme", RepoID: int64(i),
+			OwnerLogin: "acme", Name: fmt.Sprintf("svc-%03d", i), FullName: fmt.Sprintf("acme/svc-%03d", i),
+			Private: true, Archived: i%100 == 0, Host: "github.com", UpdatedAt: 5})
+	}
+	f.repos = append(f.repos, client.GitHubRepo{InstallationID: 2, AccountLogin: "other", OwnerLogin: "other", Name: "web", FullName: "other/web", Host: "github.com"})
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testFactories(),
+		Steps: []resource.TestStep{{
+			Config: providerBlock(srv.URL) + `
+data "vulnetix_github_installation_repos" "all" {}
+data "vulnetix_github_installation_repos" "archived" { include_archived = true }
+data "vulnetix_github_installation_repos" "other" { installation_id = 2 }
+data "vulnetix_github_installation_repos" "q" { query = "SVC-01" }
+`,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("data.vulnetix_github_installation_repos.all", "repos.#", "595"),
+				resource.TestCheckResourceAttr("data.vulnetix_github_installation_repos.archived", "repos.#", "601"),
+				resource.TestCheckResourceAttr("data.vulnetix_github_installation_repos.other", "full_names.#", "1"),
+				resource.TestCheckResourceAttr("data.vulnetix_github_installation_repos.other", "full_names.0", "other/web"),
+				resource.TestCheckResourceAttr("data.vulnetix_github_installation_repos.q", "repos.#", "10"),
+				resource.TestCheckResourceAttr("data.vulnetix_github_installation_repos.q", "repos.0.private", "true"),
+				resource.TestCheckResourceAttr("data.vulnetix_github_installation_repos.q", "repos.0.host", "github.com"),
 			),
 		}},
 	})

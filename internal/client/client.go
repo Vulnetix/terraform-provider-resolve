@@ -14,7 +14,8 @@
 //	GET    {endpoint}/detection-rule-feeds             the tenant's feeds
 //	GET    {endpoint}/detection-rule-feeds/{uuid}      one feed with its entries
 //	GET    {endpoint}/ai-firewall/models               the AI model catalogue
-//	GET    {endpoint}/review/decisions?kind=vex        the tenant's VEX statements
+//	GET    {endpoint}/vex/statements                   the tenant's VEX statements
+//	GET    {endpoint}/integrations/github/installations/repos  GitHub App repositories
 package client
 
 import (
@@ -539,56 +540,148 @@ func (c *Client) ListAiModels(ctx context.Context, f AiModelFilter) ([]AiModel, 
 	}
 }
 
-// VexStatement is one published OpenVEX statement, as the review decisions
-// ledger lists it (handler/review_decisions.go, the vex branch).
+// pagination is the paging block of the list routes (handler paginationOf).
+type pagination struct {
+	TotalPages int `json:"totalPages"`
+}
+
+// listPages reads a paged route at perPage until it runs out or limit items
+// have been read (0: no limit). page decodes one answer and returns its items
+// and paging block.
+func listPages[T any](ctx context.Context, c *Client, path string, q url.Values, perPage, limit int,
+	page func(raw json.RawMessage) ([]T, pagination, error)) ([]T, error) {
+	var all []T
+	for n := 1; ; n++ {
+		qq := url.Values{}
+		for k, v := range q {
+			qq[k] = v
+		}
+		qq.Set("page", fmt.Sprint(n))
+		qq.Set("perPage", fmt.Sprint(perPage))
+		var raw json.RawMessage
+		if err := c.do(ctx, http.MethodGet, path, qq, nil, &raw); err != nil {
+			return nil, err
+		}
+		items, p, err := page(raw)
+		if err != nil {
+			return nil, fmt.Errorf("GET %s: decode response: %w", path, err)
+		}
+		all = append(all, items...)
+		if limit > 0 && len(all) >= limit {
+			return all[:limit], nil
+		}
+		if len(items) == 0 || n >= p.TotalPages {
+			return all, nil
+		}
+	}
+}
+
+// VexStatement is one VEX statement the tenant holds
+// (handler/vex_statements.go vexStatementView).
 type VexStatement struct {
-	UUID string `json:"subjectKey"`
-	// At is the statement's timestamp, in Unix milliseconds.
-	At int64 `json:"at"`
-	// Label is "<vulnerability id> · <vulnerability name>".
-	Label         string `json:"subjectLabel"`
-	Status        string `json:"outcome"`
-	Justification string `json:"justification"`
-	Detail        string `json:"detail"`
-	Author        string `json:"actor"`
+	UUID              string          `json:"uuid"`
+	DocumentUUID      string          `json:"documentUuid"`
+	DocumentID        string          `json:"documentId"`
+	Author            string          `json:"author"`
+	VulnerabilityID   string          `json:"vulnerabilityId"`
+	VulnerabilityName string          `json:"vulnerabilityName"`
+	Aliases           []string        `json:"aliases"`
+	Status            string          `json:"status"`
+	Justification     string          `json:"justification"`
+	StatusNotes       string          `json:"statusNotes"`
+	ImpactStatement   string          `json:"impactStatement"`
+	ActionStatement   string          `json:"actionStatement"`
+	Supplier          string          `json:"supplier"`
+	Products          json.RawMessage `json:"products"`
+	Purls             []string        `json:"purls"`
+	// Timestamp and LastUpdated are Unix milliseconds.
+	Timestamp          int64  `json:"timestamp"`
+	LastUpdated        int64  `json:"lastUpdated"`
+	Disposition        string `json:"disposition"`
+	SuppressionUUID    string `json:"suppressionUuid"`
+	RepositoryFullName string `json:"repositoryFullName"`
+	Grounded           bool   `json:"grounded"`
+	SourceFormat       string `json:"sourceFormat"`
+	MintedBy           string `json:"mintedBySuppressionUuid"`
 }
 
 // VexStatementFilter narrows ListVexStatements. Empty fields do not filter.
 type VexStatementFilter struct {
-	// Status is a VEX status: not_affected, affected or fixed.
+	// Status is an OpenVEX status: not_affected, affected, fixed or
+	// under_investigation.
 	Status string
-	// Query matches the vulnerability, justification or detail.
-	Query string
+	// VulnerabilityID matches exactly, ignoring case.
+	VulnerabilityID string
+	// Purl is a substring of the statement's products.
+	Purl string
+	// Repository is a repository's owner/name, exactly.
+	Repository string
 	// Limit stops after this many statements; 0 reads them all.
 	Limit int
 }
 
-// ListVexStatements reads the tenant's VEX statements, newest first.
+// ListVexStatements reads the tenant's VEX statements, newest first, from
+// GET /vex/statements. A vmt_ token needs the VexSource or Suppression kind.
 func (c *Client) ListVexStatements(ctx context.Context, f VexStatementFilter) ([]VexStatement, error) {
-	var all []VexStatement
-	for page := 1; ; page++ {
-		q := url.Values{"kind": {"vex"}, "page": {fmt.Sprint(page)}, "perPage": {"100"}}
-		if f.Status != "" {
-			q.Set("outcome", f.Status)
-		}
-		if f.Query != "" {
-			q.Set("q", f.Query)
-		}
-		var out struct {
-			Entries    []VexStatement `json:"entries"`
-			Pagination struct {
-				TotalPages int `json:"totalPages"`
-			} `json:"pagination"`
-		}
-		if err := c.do(ctx, http.MethodGet, "/review/decisions", q, nil, &out); err != nil {
-			return nil, err
-		}
-		all = append(all, out.Entries...)
-		if f.Limit > 0 && len(all) >= f.Limit {
-			return all[:f.Limit], nil
-		}
-		if len(out.Entries) == 0 || page >= out.Pagination.TotalPages {
-			return all, nil
+	q := url.Values{}
+	for k, v := range map[string]string{"status": f.Status, "vulnerabilityId": f.VulnerabilityID,
+		"purl": f.Purl, "repository": f.Repository} {
+		if v != "" {
+			q.Set(k, v)
 		}
 	}
+	return listPages(ctx, c, "/vex/statements", q, 500, f.Limit, func(raw json.RawMessage) ([]VexStatement, pagination, error) {
+		var out struct {
+			Statements []VexStatement `json:"statements"`
+			Pagination pagination     `json:"pagination"`
+		}
+		err := unmarshalNumber(raw, &out)
+		return out.Statements, out.Pagination, err
+	})
+}
+
+// GitHubRepo is one repository a GitHub App installation of the tenant
+// reaches (handler/github_installation_repos.go githubInstallationRepo).
+type GitHubRepo struct {
+	InstallationID int64  `json:"installationId"`
+	AccountLogin   string `json:"accountLogin"`
+	RepoID         int64  `json:"repoId"`
+	OwnerLogin     string `json:"ownerLogin"`
+	Name           string `json:"name"`
+	FullName       string `json:"fullName"`
+	Private        bool   `json:"private"`
+	Archived       bool   `json:"archived"`
+	Host           string `json:"host"`
+	// UpdatedAt is Unix milliseconds.
+	UpdatedAt int64 `json:"updatedAt"`
+}
+
+// GitHubRepoFilter narrows ListGitHubInstallationRepos. Zero fields do not
+// filter.
+type GitHubRepoFilter struct {
+	InstallationID int64
+	// Query is a substring of owner/name, ignoring case.
+	Query string
+}
+
+// ListGitHubInstallationRepos reads every repository the tenant's active
+// GitHub App installations reach, ordered by full name, from GET
+// /integrations/github/installations/repos. A vmt_ token needs the
+// github-installations scope.
+func (c *Client) ListGitHubInstallationRepos(ctx context.Context, f GitHubRepoFilter) ([]GitHubRepo, error) {
+	q := url.Values{}
+	if f.InstallationID > 0 {
+		q.Set("installationId", fmt.Sprint(f.InstallationID))
+	}
+	if f.Query != "" {
+		q.Set("q", f.Query)
+	}
+	return listPages(ctx, c, "/integrations/github/installations/repos", q, 500, 0, func(raw json.RawMessage) ([]GitHubRepo, pagination, error) {
+		var out struct {
+			Repos      []GitHubRepo `json:"repos"`
+			Pagination pagination   `json:"pagination"`
+		}
+		err := unmarshalNumber(raw, &out)
+		return out.Repos, out.Pagination, err
+	})
 }

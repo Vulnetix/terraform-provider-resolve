@@ -120,5 +120,6 @@ func (p *vulnetixProvider) DataSources(context.Context) []func() datasource.Data
 		newVirtualPatchesDataSource,
 		newAiModelsDataSource,
 		newVexStatementsDataSource,
+		newGitHubInstallationReposDataSource,
 	}
 }
