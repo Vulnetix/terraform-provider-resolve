@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"fmt"
 	"regexp"
 	"testing"
 
@@ -114,6 +115,60 @@ func TestFeedsPlanLocked(t *testing.T) {
 		Steps: []resource.TestStep{{
 			Config:      providerBlock(srv.URL) + `data "vulnetix_detection_rule_feed" "d" { name = "x" }`,
 			ExpectError: regexp.MustCompile(`need a Pro plan or higher \(requires pro\)`),
+		}},
+	})
+}
+
+func TestAiModelsDataSource(t *testing.T) {
+	f, srv := newFakeAPI(t)
+	for i := 0; i < 130; i++ {
+		f.models = append(f.models, client.AiModel{UUID: fmt.Sprintf("m%d", i), Slug: fmt.Sprintf("model-%d", i),
+			Name: "Model", ProviderUUID: "p1", ProviderSlug: "acme", IsActive: true})
+	}
+	f.models = append(f.models, client.AiModel{UUID: "c1", Slug: "claude-x", Name: "Other", ProviderUUID: "p2", ProviderSlug: "other"})
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testFactories(),
+		Steps: []resource.TestStep{{
+			Config: providerBlock(srv.URL) + `
+data "vulnetix_ai_models" "all" {}
+data "vulnetix_ai_models" "p2" { provider_uuid = "p2" }
+`,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("data.vulnetix_ai_models.all", "models.#", "131"),
+				resource.TestCheckResourceAttr("data.vulnetix_ai_models.p2", "models.#", "1"),
+				resource.TestCheckResourceAttr("data.vulnetix_ai_models.p2", "models.0.provider_slug", "other"),
+				resource.TestCheckResourceAttr("data.vulnetix_ai_models.p2", "models.0.is_active", "false"),
+			),
+		}},
+	})
+}
+
+func TestVexStatementsDataSource(t *testing.T) {
+	f, srv := newFakeAPI(t)
+	for i := 0; i < 120; i++ {
+		f.vex = append(f.vex, map[string]any{"kind": "vex", "at": 1767225600000 + i, "subjectKey": fmt.Sprintf("s%d", i),
+			"findingUuid": "", "subjectLabel": fmt.Sprintf("CVE-2026-%04d · lib", i), "outcome": "not_affected",
+			"justification": "component_not_present", "detail": "", "repoName": "", "actor": "sec@acme.example", "automated": false})
+	}
+	f.vex = append(f.vex, map[string]any{"subjectKey": "fx", "at": 1, "subjectLabel": "GHSA-xxxx", "outcome": "fixed", "actor": "a"})
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testFactories(),
+		Steps: []resource.TestStep{{
+			Config: providerBlock(srv.URL) + `
+data "vulnetix_vex_statements" "all" {}
+data "vulnetix_vex_statements" "few" { limit = 5 }
+data "vulnetix_vex_statements" "fixed" { status = "fixed" }
+`,
+			Check: resource.ComposeAggregateTestCheckFunc(
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.all", "statements.#", "121"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.few", "statements.#", "5"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.all", "statements.0.vulnerability_id", "CVE-2026-0000"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.all", "statements.0.vulnerability_name", "lib"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.all", "statements.0.timestamp", "1767225600000"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.fixed", "statements.#", "1"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.fixed", "statements.0.vulnerability_id", "GHSA-xxxx"),
+				resource.TestCheckResourceAttr("data.vulnetix_vex_statements.fixed", "statements.0.vulnerability_name", ""),
+			),
 		}},
 	})
 }

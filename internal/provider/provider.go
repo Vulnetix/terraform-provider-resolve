@@ -118,5 +118,7 @@ func (p *vulnetixProvider) DataSources(context.Context) []func() datasource.Data
 		newKindsDataSource,
 		newDetectionRuleFeedDataSource,
 		newVirtualPatchesDataSource,
+		newAiModelsDataSource,
+		newVexStatementsDataSource,
 	}
 }

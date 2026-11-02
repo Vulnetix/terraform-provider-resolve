@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -30,6 +31,8 @@ type fakeAPI struct {
 	feeds    []client.Feed
 	entries  map[string][]client.FeedEntry
 	locked   bool
+	models   []client.AiModel
+	vex      []map[string]any
 }
 
 func newFakeAPI(t *testing.T) (*fakeAPI, *httptest.Server) {
@@ -59,6 +62,10 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"kinds":       []map[string]any{{"kind": "QualityGate", "schemaUrl": "https://example.test/QualityGate.schema.json", "dependsOn": []string{}, "schema": map[string]any{"title": "QualityGate"}}},
 			"schemaKinds": []string{"QualityGate"},
 		})
+	case p == "/ai-firewall/models" && r.Method == http.MethodGet:
+		f.aiModels(w, r)
+	case p == "/review/decisions" && r.Method == http.MethodGet:
+		f.decisions(w, r)
 	case strings.HasPrefix(p, "/config/objects/"):
 		f.object(w, r, strings.TrimPrefix(p, "/config/objects/"))
 	case p == "/detection-rule-feeds" && r.Method == http.MethodGet:
@@ -185,4 +192,49 @@ provider "vulnetix" {
   token    = "vmt_test"
 }
 `
+}
+
+// aiModels pages like AiFirewallModelsList: page, per_page, provider, search.
+func (f *fakeAPI) aiModels(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	var match []client.AiModel
+	for _, m := range f.models {
+		if p := q.Get("provider"); p != "" && m.ProviderUUID != p {
+			continue
+		}
+		if s := strings.ToLower(q.Get("search")); s != "" && !strings.Contains(strings.ToLower(m.Slug+" "+m.Name), s) {
+			continue
+		}
+		match = append(match, m)
+	}
+	page, per := atoiOr(q.Get("page"), 1), atoiOr(q.Get("per_page"), 25)
+	from, to := min((page-1)*per, len(match)), min(page*per, len(match))
+	writeJSON(w, http.StatusOK, map[string]any{"models": match[from:to], "total": len(match), "page": page, "perPage": per})
+}
+
+// decisions pages like ReviewDecisions for kind=vex.
+func (f *fakeAPI) decisions(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	if q.Get("kind") != "vex" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "the fake serves kind=vex only"})
+		return
+	}
+	var match []map[string]any
+	for _, e := range f.vex {
+		if o := q.Get("outcome"); o != "" && e["outcome"] != o {
+			continue
+		}
+		match = append(match, e)
+	}
+	page, per := atoiOr(q.Get("page"), 1), atoiOr(q.Get("perPage"), 25)
+	from, to := min((page-1)*per, len(match)), min(page*per, len(match))
+	writeJSON(w, http.StatusOK, map[string]any{"entries": match[from:to],
+		"pagination": map[string]int{"page": page, "perPage": per, "totalRows": len(match), "totalPages": (len(match) + per - 1) / per}})
+}
+
+func atoiOr(s string, def int) int {
+	if n, err := strconv.Atoi(s); err == nil && n > 0 {
+		return n
+	}
+	return def
 }

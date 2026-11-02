@@ -13,6 +13,8 @@
 //	GET    {endpoint}/config/export?format=yaml        the tenant's documents, secrets redacted
 //	GET    {endpoint}/detection-rule-feeds             the tenant's feeds
 //	GET    {endpoint}/detection-rule-feeds/{uuid}      one feed with its entries
+//	GET    {endpoint}/ai-firewall/models               the AI model catalogue
+//	GET    {endpoint}/review/decisions?kind=vex        the tenant's VEX statements
 package client
 
 import (
@@ -489,4 +491,104 @@ func (c *Client) GetFeed(ctx context.Context, uuid string) (*Feed, []FeedEntry, 
 		return nil, nil, ErrNotFound
 	}
 	return out.Feed, out.Entries, nil
+}
+
+// AiModel is one entry of the AI firewall model catalogue
+// (handler/ai_firewall_models.go AiModelCatalogEntry): a built-in
+// provider's model or one of the tenant's custom provider's.
+type AiModel struct {
+	UUID         string `json:"uuid"`
+	Slug         string `json:"slug"`
+	Name         string `json:"name"`
+	ProviderUUID string `json:"providerUuid"`
+	ProviderSlug string `json:"providerSlug"`
+	IsActive     bool   `json:"isActive"`
+	ReleasedAt   int64  `json:"releasedAt"`
+}
+
+// AiModelFilter narrows ListAiModels. Empty fields do not filter.
+type AiModelFilter struct {
+	// ProviderUUID is a provider's uuid.
+	ProviderUUID string
+	// Search matches the model's slug or name, case-insensitively.
+	Search string
+}
+
+// ListAiModels reads every page of GET /ai-firewall/models.
+func (c *Client) ListAiModels(ctx context.Context, f AiModelFilter) ([]AiModel, error) {
+	var all []AiModel
+	for page := 1; ; page++ {
+		q := url.Values{"page": {fmt.Sprint(page)}, "per_page": {"100"}}
+		if f.ProviderUUID != "" {
+			q.Set("provider", f.ProviderUUID)
+		}
+		if f.Search != "" {
+			q.Set("search", f.Search)
+		}
+		var out struct {
+			Models []AiModel `json:"models"`
+			Total  int64     `json:"total"`
+		}
+		if err := c.do(ctx, http.MethodGet, "/ai-firewall/models", q, nil, &out); err != nil {
+			return nil, err
+		}
+		all = append(all, out.Models...)
+		if len(out.Models) == 0 || int64(len(all)) >= out.Total {
+			return all, nil
+		}
+	}
+}
+
+// VexStatement is one published OpenVEX statement, as the review decisions
+// ledger lists it (handler/review_decisions.go, the vex branch).
+type VexStatement struct {
+	UUID string `json:"subjectKey"`
+	// At is the statement's timestamp, in Unix milliseconds.
+	At int64 `json:"at"`
+	// Label is "<vulnerability id> · <vulnerability name>".
+	Label         string `json:"subjectLabel"`
+	Status        string `json:"outcome"`
+	Justification string `json:"justification"`
+	Detail        string `json:"detail"`
+	Author        string `json:"actor"`
+}
+
+// VexStatementFilter narrows ListVexStatements. Empty fields do not filter.
+type VexStatementFilter struct {
+	// Status is a VEX status: not_affected, affected or fixed.
+	Status string
+	// Query matches the vulnerability, justification or detail.
+	Query string
+	// Limit stops after this many statements; 0 reads them all.
+	Limit int
+}
+
+// ListVexStatements reads the tenant's VEX statements, newest first.
+func (c *Client) ListVexStatements(ctx context.Context, f VexStatementFilter) ([]VexStatement, error) {
+	var all []VexStatement
+	for page := 1; ; page++ {
+		q := url.Values{"kind": {"vex"}, "page": {fmt.Sprint(page)}, "perPage": {"100"}}
+		if f.Status != "" {
+			q.Set("outcome", f.Status)
+		}
+		if f.Query != "" {
+			q.Set("q", f.Query)
+		}
+		var out struct {
+			Entries    []VexStatement `json:"entries"`
+			Pagination struct {
+				TotalPages int `json:"totalPages"`
+			} `json:"pagination"`
+		}
+		if err := c.do(ctx, http.MethodGet, "/review/decisions", q, nil, &out); err != nil {
+			return nil, err
+		}
+		all = append(all, out.Entries...)
+		if f.Limit > 0 && len(all) >= f.Limit {
+			return all[:f.Limit], nil
+		}
+		if len(out.Entries) == 0 || page >= out.Pagination.TotalPages {
+			return all, nil
+		}
+	}
 }
