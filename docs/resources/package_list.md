@@ -5,7 +5,7 @@ description: |-
   Entries for the tenant's package firewall allow list or deny list. The tenant has one of each; every PackageList contributes its entries to one of them, and owns only the entries it declares. A deny entry always blocks, in every mode, ahead of every other check. An allow entry waives every policy block (thresholds, KEV, exploits, bad actors, end of life, cooldown, version lag) but never an exact-version malware match, a known-bad artifact hash or a malware scan verdict.
   An object of this kind can reference PackageFirewallPolicy objects. Reference those resources' attributes, or add depends_on, so Terraform applies them first.
   Manages the PackageList config kind through /config/objects/PackageList/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as Organization). Some kinds wait on a person after they are applied (an invited Member, a Slack connection): status.phase says so, and Terraform does not wait.
 ---
 
 # vulnetix_package_list (Resource)
@@ -16,7 +16,7 @@ An object of this kind can reference `PackageFirewallPolicy` objects. Reference 
 
 Manages the `PackageList` config kind through `/config/objects/PackageList/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as `Organization`). Some kinds wait on a person after they are applied (an invited `Member`, a Slack connection): `status.phase` says so, and Terraform does not wait.
 
 ## Example Usage
 
@@ -113,6 +113,7 @@ resource "vulnetix_package_list" "banned" {
 ### Read-Only
 
 - `id` (String) The object's name, the same as `name`.
+- `status` (Attributes) What the server says about the object beyond its spec. (see [below for nested schema](#nestedatt--status))
 
 <a id="nestedatt--entries"></a>
 ### Nested Schema for `entries`
@@ -126,6 +127,19 @@ Optional:
 - `reason` (String) Why the decision was made, for the people who review the list.
 - `scope` (String) What an allow entry waives. full: every policy block. bad_actor: only a bad-actor attribution, for an operator who judged that attribution a false positive. A deny entry is always full. One of `full`, `bad_actor`. Schema default: `full`.
 - `when` (String) A CEL condition over the package variables (purl, ecosystem, name, version, published, ageDays, versionLag, malware, cvss, epss, cess, kev, eol, exploitMaturity, badActor, now). The entry applies only to versions for which it is true: a deny entry blocks only those versions, an allow entry waives only for them. Left out, the entry applies to every version it names. A CEL expression, evaluated in the `package` environment.
+
+
+<a id="nestedatt--status"></a>
+### Nested Schema for `status`
+
+Read-Only:
+
+- `authorization_url` (String) Where a person authorizes the object while the phase is `AwaitingAuthorization`.
+- `extra` (Map of String) Other fields the kind reports, such as an invitation's expiry or a service account's principal. Structured values are JSON.
+- `message` (String) Why the object is in its phase, when the server says.
+- `object_uuid` (String) The object's id on the server.
+- `once` (Map of String, Sensitive) Credentials the server shows only when it creates the object: a service account's `apiKey` and `secret`, a messaging connection's `signingSecret`, a log source's ingest token. They are kept in the state from the create, so keep the state encrypted. They cannot be read again: replace the object to get new ones.
+- `phase` (String) `Applied` for most objects. `Pending` when the object waits on someone (an invited member who has not accepted), `AwaitingAuthorization` when a person has to authorize it in a browser at `authorization_url`. Terraform does not wait for either. `Unmanaged` means the object exists but no manager owns it.
 
 ## Import
 

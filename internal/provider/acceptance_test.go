@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -46,6 +47,14 @@ func accFactories() map[string]func() (tfprotov6.ProviderServer, error) {
 // named by the environment: create, plan-empty, update, import, destroy.
 func testAccKind(t *testing.T, kind string) {
 	t.Helper()
+	// A kind that needs something outside the tenant (a GitHub App installation
+	// to adopt, a Wiz account, a real mailbox for an invitation) can be left
+	// out of a run: VULNETIX_ACC_SKIP_KINDS=GitHubInstallation,WizConnection.
+	for _, s := range strings.Split(os.Getenv("VULNETIX_ACC_SKIP_KINDS"), ",") {
+		if strings.TrimSpace(s) == kind {
+			t.Skipf("%s is in VULNETIX_ACC_SKIP_KINDS", kind)
+		}
+	}
 	var spec *kindSpec
 	for i := range generatedKinds {
 		if generatedKinds[i].Kind == kind {
@@ -76,20 +85,60 @@ func TestAccKinds(t *testing.T) {
 	})
 }
 
+func TestAccAgentProfile(t *testing.T)          { testAccKind(t, "AgentProfile") }
 func TestAccAiFirewallPolicy(t *testing.T)      { testAccKind(t, "AiFirewallPolicy") }
 func TestAccAiGovernanceList(t *testing.T)      { testAccKind(t, "AiGovernanceList") }
 func TestAccAiProvider(t *testing.T)            { testAccKind(t, "AiProvider") }
+func TestAccAlertTrigger(t *testing.T)          { testAccKind(t, "AlertTrigger") }
 func TestAccApiSpecSource(t *testing.T)         { testAccKind(t, "ApiSpecSource") }
+func TestAccAwsAccount(t *testing.T)            { testAccKind(t, "AwsAccount") }
+func TestAccAwsConnection(t *testing.T)         { testAccKind(t, "AwsConnection") }
+func TestAccCampaign(t *testing.T)              { testAccKind(t, "Campaign") }
+func TestAccCloudSensors(t *testing.T)          { testAccKind(t, "CloudSensors") }
+func TestAccCrew(t *testing.T)                  { testAccKind(t, "Crew") }
+func TestAccDetectionRule(t *testing.T)         { testAccKind(t, "DetectionRule") }
+func TestAccDetectionRuleFeed(t *testing.T)     { testAccKind(t, "DetectionRuleFeed") }
+func TestAccFactoryBudget(t *testing.T)         { testAccKind(t, "FactoryBudget") }
+func TestAccFactoryManagedOrg(t *testing.T)     { testAccKind(t, "FactoryManagedOrg") }
+func TestAccFactorySchedule(t *testing.T)       { testAccKind(t, "FactorySchedule") }
+func TestAccFactorySettings(t *testing.T)       { testAccKind(t, "FactorySettings") }
+func TestAccFactoryTrigger(t *testing.T)        { testAccKind(t, "FactoryTrigger") }
+func TestAccFactoryWorkflow(t *testing.T)       { testAccKind(t, "FactoryWorkflow") }
+func TestAccForgeConnection(t *testing.T)       { testAccKind(t, "ForgeConnection") }
+func TestAccGitHubInstallation(t *testing.T)    { testAccKind(t, "GitHubInstallation") }
 func TestAccJailExemption(t *testing.T)         { testAccKind(t, "JailExemption") }
 func TestAccJailPolicy(t *testing.T)            { testAccKind(t, "JailPolicy") }
+func TestAccLibraryItem(t *testing.T)           { testAccKind(t, "LibraryItem") }
+func TestAccLogSource(t *testing.T)             { testAccKind(t, "LogSource") }
 func TestAccMalwareIoc(t *testing.T)            { testAccKind(t, "MalwareIoc") }
+func TestAccMember(t *testing.T)                { testAccKind(t, "Member") }
+func TestAccMessagingConnection(t *testing.T)   { testAccKind(t, "MessagingConnection") }
+func TestAccMessagingRoute(t *testing.T)        { testAccKind(t, "MessagingRoute") }
+func TestAccMessagingTemplate(t *testing.T)     { testAccKind(t, "MessagingTemplate") }
+func TestAccNotificationDefaults(t *testing.T)  { testAccKind(t, "NotificationDefaults") }
+func TestAccOrganization(t *testing.T)          { testAccKind(t, "Organization") }
 func TestAccPackageFirewallPolicy(t *testing.T) { testAccKind(t, "PackageFirewallPolicy") }
 func TestAccPackageList(t *testing.T)           { testAccKind(t, "PackageList") }
 func TestAccQualityGate(t *testing.T)           { testAccKind(t, "QualityGate") }
 func TestAccRemediationPolicy(t *testing.T)     { testAccKind(t, "RemediationPolicy") }
+func TestAccRepositorySettings(t *testing.T)    { testAccKind(t, "RepositorySettings") }
 func TestAccRiskStrategy(t *testing.T)          { testAccKind(t, "RiskStrategy") }
+func TestAccRuntimeSensorPolicy(t *testing.T)   { testAccKind(t, "RuntimeSensorPolicy") }
+func TestAccSandboxEgressPolicy(t *testing.T)   { testAccKind(t, "SandboxEgressPolicy") }
+func TestAccSandboxLaunchProfile(t *testing.T)  { testAccKind(t, "SandboxLaunchProfile") }
+func TestAccSavedSearch(t *testing.T)           { testAccKind(t, "SavedSearch") }
+func TestAccScannerProfile(t *testing.T)        { testAccKind(t, "ScannerProfile") }
+func TestAccScheduledReport(t *testing.T)       { testAccKind(t, "ScheduledReport") }
+func TestAccServiceAccount(t *testing.T)        { testAccKind(t, "ServiceAccount") }
 func TestAccSuppression(t *testing.T)           { testAccKind(t, "Suppression") }
+func TestAccTeaAccessPolicy(t *testing.T)       { testAccKind(t, "TeaAccessPolicy") }
+func TestAccTeaCollection(t *testing.T)         { testAccKind(t, "TeaCollection") }
+func TestAccTeaComponent(t *testing.T)          { testAccKind(t, "TeaComponent") }
+func TestAccTeaProduct(t *testing.T)            { testAccKind(t, "TeaProduct") }
+func TestAccTeaPublicationTarget(t *testing.T)  { testAccKind(t, "TeaPublicationTarget") }
+func TestAccVaultEntry(t *testing.T)            { testAccKind(t, "VaultEntry") }
 func TestAccVexSource(t *testing.T)             { testAccKind(t, "VexSource") }
+func TestAccWizConnection(t *testing.T)         { testAccKind(t, "WizConnection") }
 
 // Every served kind has its TestAcc<Kind>, so a newly served kind cannot
 // ship without an acceptance test.

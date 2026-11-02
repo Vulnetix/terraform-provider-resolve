@@ -4,7 +4,7 @@ subcategory: ""
 description: |-
   The tenant's remediation policy (triage policy in the console): the remediation window per severity band, the triage threshold, and the CVSS scores that separate the bands. Exposure reports grade against it, compliance reports cite it, and jail COUNT_PAST_SLA rules read its windows. One per tenant. Either adopt a published standard as it is, so reports cite the standard, or declare your own windows. Saving your own never edits the policy earlier snapshots and reports cite: it saves a new revision and points the tenant at it.
   Manages the RemediationPolicy config kind through /config/objects/RemediationPolicy/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as Organization). Some kinds wait on a person after they are applied (an invited Member, a Slack connection): status.phase says so, and Terraform does not wait.
 ---
 
 # vulnetix_remediation_policy (Resource)
@@ -13,7 +13,7 @@ The tenant's remediation policy (triage policy in the console): the remediation 
 
 Manages the `RemediationPolicy` config kind through `/config/objects/RemediationPolicy/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as `Organization`). Some kinds wait on a person after they are applied (an invited `Member`, a Slack connection): `status.phase` says so, and Terraform does not wait.
 
 ## Example Usage
 
@@ -95,6 +95,7 @@ resource "vulnetix_remediation_policy" "default" {
 ### Read-Only
 
 - `id` (String) The object's name, the same as `name`.
+- `status` (Attributes) What the server says about the object beyond its spec. (see [below for nested schema](#nestedatt--status))
 
 <a id="nestedatt--allowance_days"></a>
 ### Nested Schema for `allowance_days`
@@ -126,6 +127,19 @@ Required:
 - `high` (Number)
 - `low` (Number)
 - `medium` (Number)
+
+
+<a id="nestedatt--status"></a>
+### Nested Schema for `status`
+
+Read-Only:
+
+- `authorization_url` (String) Where a person authorizes the object while the phase is `AwaitingAuthorization`.
+- `extra` (Map of String) Other fields the kind reports, such as an invitation's expiry or a service account's principal. Structured values are JSON.
+- `message` (String) Why the object is in its phase, when the server says.
+- `object_uuid` (String) The object's id on the server.
+- `once` (Map of String, Sensitive) Credentials the server shows only when it creates the object: a service account's `apiKey` and `secret`, a messaging connection's `signingSecret`, a log source's ingest token. They are kept in the state from the create, so keep the state encrypted. They cannot be read again: replace the object to get new ones.
+- `phase` (String) `Applied` for most objects. `Pending` when the object waits on someone (an invited member who has not accepted), `AwaitingAuthorization` when a person has to authorize it in a browser at `authorization_url`. Terraform does not wait for either. `Unmanaged` means the object exists but no manager owns it.
 
 ## Import
 

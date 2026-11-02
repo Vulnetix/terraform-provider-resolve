@@ -137,10 +137,12 @@ func exampleSteps(t *testing.T, k kindSpec, providerHCL string, check resource.T
 		},
 	}
 	for i, addr := range advanced.addrs {
-		ignore := []string{}
-		for _, wo := range advanced.writeOnly {
-			ignore = append(ignore, wo, wo+"_version")
-		}
+		// status is what the server said at apply time (the once map, the
+		// authorization URL); an import cannot know it.
+		ignore := []string{"status"}
+		// A write-only argument and its version are not in the server's answer, so
+		// an import does not know them, nested or not.
+		ignore = append(ignore, writeOnlyPaths(k.Fields, "")...)
 		steps = append(steps, resource.TestStep{
 			Config:                  providerHCL + advanced.hcl,
 			ConfigVariables:         exampleVars(advanced),
@@ -190,4 +192,19 @@ func TestExamplesLifecycle(t *testing.T) {
 			})
 		})
 	}
+}
+
+// writeOnlyPaths lists the state paths of every write-only argument and its
+// version, in the nested attributes too (oauth.client_secret_wo_version).
+func writeOnlyPaths(fields []field, prefix string) []string {
+	var out []string
+	for _, f := range fields {
+		switch {
+		case f.WriteOnly || f.Local:
+			out = append(out, prefix+f.Attr)
+		case len(f.Children) > 0 && f.Kind == fieldObject:
+			out = append(out, writeOnlyPaths(f.Children, prefix+f.Attr+".")...)
+		}
+	}
+	return out
 }

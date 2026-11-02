@@ -47,20 +47,60 @@ The provider authenticates with a config management token (`vmt_...`), sent as `
 
 | Resource | Kind |
 |----------|------|
-| [`vulnetix_ai_firewall_policy`](resources/ai_firewall_policy) | AiFirewallPolicy (one per tenant) |
+| [`vulnetix_agent_profile`](resources/agent_profile) | AgentProfile |
+| [`vulnetix_ai_firewall_policy`](resources/ai_firewall_policy) | AiFirewallPolicy, one per tenant |
 | [`vulnetix_ai_governance_list`](resources/ai_governance_list) | AiGovernanceList |
 | [`vulnetix_ai_provider`](resources/ai_provider) | AiProvider |
+| [`vulnetix_alert_trigger`](resources/alert_trigger) | AlertTrigger |
 | [`vulnetix_api_spec_source`](resources/api_spec_source) | ApiSpecSource |
+| [`vulnetix_aws_account`](resources/aws_account) | AwsAccount |
+| [`vulnetix_aws_connection`](resources/aws_connection) | AwsConnection, one per tenant |
+| [`vulnetix_campaign`](resources/campaign) | Campaign |
+| [`vulnetix_cloud_sensors`](resources/cloud_sensors) | CloudSensors |
+| [`vulnetix_crew`](resources/crew) | Crew |
+| [`vulnetix_detection_rule_feed`](resources/detection_rule_feed) | DetectionRuleFeed |
+| [`vulnetix_detection_rule`](resources/detection_rule) | DetectionRule |
+| [`vulnetix_factory_budget`](resources/factory_budget) | FactoryBudget |
+| [`vulnetix_factory_managed_org`](resources/factory_managed_org) | FactoryManagedOrg |
+| [`vulnetix_factory_schedule`](resources/factory_schedule) | FactorySchedule |
+| [`vulnetix_factory_settings`](resources/factory_settings) | FactorySettings, one per tenant |
+| [`vulnetix_factory_trigger`](resources/factory_trigger) | FactoryTrigger |
+| [`vulnetix_factory_workflow`](resources/factory_workflow) | FactoryWorkflow |
+| [`vulnetix_forge_connection`](resources/forge_connection) | ForgeConnection |
+| [`vulnetix_git_hub_installation`](resources/git_hub_installation) | GitHubInstallation |
 | [`vulnetix_jail_exemption`](resources/jail_exemption) | JailExemption |
 | [`vulnetix_jail_policy`](resources/jail_policy) | JailPolicy |
+| [`vulnetix_library_item`](resources/library_item) | LibraryItem |
+| [`vulnetix_log_source`](resources/log_source) | LogSource |
 | [`vulnetix_malware_ioc`](resources/malware_ioc) | MalwareIoc |
-| [`vulnetix_package_firewall_policy`](resources/package_firewall_policy) | PackageFirewallPolicy (one per tenant) |
+| [`vulnetix_member`](resources/member) | Member, owner token |
+| [`vulnetix_messaging_connection`](resources/messaging_connection) | MessagingConnection |
+| [`vulnetix_messaging_route`](resources/messaging_route) | MessagingRoute |
+| [`vulnetix_messaging_template`](resources/messaging_template) | MessagingTemplate |
+| [`vulnetix_notification_defaults`](resources/notification_defaults) | NotificationDefaults, one per tenant |
+| [`vulnetix_organization`](resources/organization) | Organization, one per tenant, owner token |
+| [`vulnetix_package_firewall_policy`](resources/package_firewall_policy) | PackageFirewallPolicy, one per tenant |
 | [`vulnetix_package_list`](resources/package_list) | PackageList |
-| [`vulnetix_quality_gate`](resources/quality_gate) | QualityGate (one per tenant) |
-| [`vulnetix_remediation_policy`](resources/remediation_policy) | RemediationPolicy (one per tenant) |
+| [`vulnetix_quality_gate`](resources/quality_gate) | QualityGate, one per tenant |
+| [`vulnetix_remediation_policy`](resources/remediation_policy) | RemediationPolicy, one per tenant |
+| [`vulnetix_repository_settings`](resources/repository_settings) | RepositorySettings |
 | [`vulnetix_risk_strategy`](resources/risk_strategy) | RiskStrategy |
+| [`vulnetix_runtime_sensor_policy`](resources/runtime_sensor_policy) | RuntimeSensorPolicy |
+| [`vulnetix_sandbox_egress_policy`](resources/sandbox_egress_policy) | SandboxEgressPolicy |
+| [`vulnetix_sandbox_launch_profile`](resources/sandbox_launch_profile) | SandboxLaunchProfile |
+| [`vulnetix_saved_search`](resources/saved_search) | SavedSearch |
+| [`vulnetix_scanner_profile`](resources/scanner_profile) | ScannerProfile, one per tenant |
+| [`vulnetix_scheduled_report`](resources/scheduled_report) | ScheduledReport |
+| [`vulnetix_service_account`](resources/service_account) | ServiceAccount, owner token |
 | [`vulnetix_suppression`](resources/suppression) | Suppression |
+| [`vulnetix_tea_access_policy`](resources/tea_access_policy) | TeaAccessPolicy |
+| [`vulnetix_tea_collection`](resources/tea_collection) | TeaCollection |
+| [`vulnetix_tea_component`](resources/tea_component) | TeaComponent |
+| [`vulnetix_tea_product`](resources/tea_product) | TeaProduct |
+| [`vulnetix_tea_publication_target`](resources/tea_publication_target) | TeaPublicationTarget |
+| [`vulnetix_vault_entry`](resources/vault_entry) | VaultEntry, owner token |
 | [`vulnetix_vex_source`](resources/vex_source) | VexSource |
+| [`vulnetix_wiz_connection`](resources/wiz_connection) | WizConnection, one per tenant |
 
 Data sources: [`vulnetix_kinds`](data-sources/kinds), [`vulnetix_ai_models`](data-sources/ai_models), [`vulnetix_vex_statements`](data-sources/vex_statements), [`vulnetix_github_installation_repos`](data-sources/github_installation_repos),[`vulnetix_detection_rule_feed`](data-sources/detection_rule_feed) and [`vulnetix_virtual_patches`](data-sources/virtual_patches).
 

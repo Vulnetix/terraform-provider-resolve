@@ -16,7 +16,7 @@ import (
 // own attributes and Terraform's meta-arguments. Kept in step with
 // internal/provider reservedAttrs; a test there checks generated kinds.
 var reserved = map[string]bool{
-	"id": true, "name": true, "labels": true, "annotations": true,
+	"id": true, "name": true, "labels": true, "annotations": true, "status": true,
 	"count": true, "for_each": true, "provider": true, "lifecycle": true,
 	"depends_on": true, "provisioner": true, "connection": true,
 }
@@ -100,8 +100,14 @@ func (g *generator) ordered(where string, n *node) bool {
 		g.decided[where] = true
 		return c.ordered
 	}
+	// An array the schema says is unique is a set: Terraform compares a set
+	// without order, so it is right whatever order the server answers in.
+	// Only an array that may repeat is ambiguous, and needs an entry.
+	if n.UniqueItems {
+		return false
+	}
 	g.undecided = append(g.undecided, where)
-	return !n.UniqueItems
+	return true
 }
 
 // generate emits the kindSpec for one kind.
@@ -168,6 +174,9 @@ func (g *generator) generate(kind string) (*kindOut, error) {
 	if ann != nil && len(ann.DependsOn) > 0 {
 		fmt.Fprintf(&src, "DependsOn: %#v,\n", ann.DependsOn)
 	}
+	if ownerOnly[kind] {
+		src.WriteString("OwnerOnly: true,\n")
+	}
 	fmt.Fprintf(&src, "Attributes: func() map[string]schema.Attribute {\nreturn map[string]schema.Attribute{\n%s}\n},\n", attrs.String())
 	fmt.Fprintf(&src, "Fields: []field{\n%s},\n}\n", fields.String())
 	src.WriteString(keepImports)
@@ -229,6 +238,9 @@ func (g *generator) object(attrs, fields *bytes.Buffer, tree *[]hfield, obj *nod
 			continue
 		}
 		attr := snake(jsonName)
+		if r, ok := renames[where+"."+jsonName]; ok && top {
+			attr = r
+		}
 		if top && reserved[attr] {
 			return fmt.Errorf("%s.%s: maps to %s, which the resource reserves", where, jsonName, attr)
 		}

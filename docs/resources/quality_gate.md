@@ -4,7 +4,7 @@ subcategory: ""
 description: |-
   The tenant's quality gate: the checks every vulnetix scan in CI must pass. When a check is set here it overrides the matching scan flag; a check left out leaves the flag in charge. One per tenant.
   Manages the QualityGate config kind through /config/objects/QualityGate/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
-  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+  Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as Organization). Some kinds wait on a person after they are applied (an invited Member, a Slack connection): status.phase says so, and Terraform does not wait.
 ---
 
 # vulnetix_quality_gate (Resource)
@@ -13,7 +13,7 @@ The tenant's quality gate: the checks every vulnetix scan in CI must pass. When 
 
 Manages the `QualityGate` config kind through `/config/objects/QualityGate/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 
-Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.
+Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as `Organization`). Some kinds wait on a person after they are applied (an invited `Member`, a Slack connection): `status.phase` says so, and Terraform does not wait.
 
 ## Example Usage
 
@@ -84,6 +84,7 @@ resource "vulnetix_quality_gate" "default" {
 ### Read-Only
 
 - `id` (String) The object's name, the same as `name`.
+- `status` (Attributes) What the server says about the object beyond its spec. (see [below for nested schema](#nestedatt--status))
 
 <a id="nestedatt--eol"></a>
 ### Nested Schema for `eol`
@@ -112,6 +113,19 @@ Optional:
 
 - `max_major_bump` (Number) The most major versions a fix may cross: 0 keeps fixes within the current major, N allows up to N. Any whole number from 0 up, with no upper limit. The --sca-autofix-max-major-bump flag also takes a negative number for no limit, but the gate cannot store one, and a value set here overrides the flag, so a tenant that wants no limit leaves this out.
 - `strategy` (String) latest: the newest release. safest: the release with the fewest known vulnerabilities. stable: the newest release past its cooldown. rolling: the newest release that is not malware, known vulnerabilities allowed. One of `latest`, `safest`, `stable`, `rolling`.
+
+
+<a id="nestedatt--status"></a>
+### Nested Schema for `status`
+
+Read-Only:
+
+- `authorization_url` (String) Where a person authorizes the object while the phase is `AwaitingAuthorization`.
+- `extra` (Map of String) Other fields the kind reports, such as an invitation's expiry or a service account's principal. Structured values are JSON.
+- `message` (String) Why the object is in its phase, when the server says.
+- `object_uuid` (String) The object's id on the server.
+- `once` (Map of String, Sensitive) Credentials the server shows only when it creates the object: a service account's `apiKey` and `secret`, a messaging connection's `signingSecret`, a log source's ingest token. They are kept in the state from the create, so keep the state encrypted. They cannot be read again: replace the object to get new ones.
+- `phase` (String) `Applied` for most objects. `Pending` when the object waits on someone (an invited member who has not accepted), `AwaitingAuthorization` when a person has to authorize it in a browser at `authorization_url`. Terraform does not wait for either. `Unmanaged` means the object exists but no manager owns it.
 
 ## Import
 
