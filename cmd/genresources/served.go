@@ -10,7 +10,7 @@ package main
 // When an adapter lands, add its kind here and run go generate ./...
 //
 // Validate-only kinds (x-vulnetix.validateOnly) are registered with the
-// engine too, but get no resource at all; see validateOnly.
+// engine too, but get no resource at all: the server stores nothing for them.
 var served = map[string]bool{
 	"AiFirewallPolicy":      true,
 	"AiGovernanceList":      true,

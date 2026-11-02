@@ -15,8 +15,10 @@ type collection struct {
 
 // collections decides every array in the released kinds, keyed by its path:
 // Kind.spec.<property>, with [] for a list element and {} for a map value.
-// TestEveryArrayDecided fails on an array of a new kind until it is listed
-// here, so the choice is made from the adapter, not left to a default.
+// TestEveryArrayDecided fails on an array of a served kind until it is
+// listed here, so the choice is made from the adapter, not left to a
+// default. An unserved kind falls back to uniqueItems: a set when the
+// schema says the items are unique, else a list.
 //
 // An array the generator carries as a JSON string (VexSource urls, whose
 // items are a string or an object) needs no entry: its JSON keeps the order.
@@ -55,11 +57,4 @@ var collections = map[string]collection{
 	"VexSource.spec.trust.allowedAuthors": {false, "uniqueItems: an allow list of authors."},
 	"VexSource.spec.git.paths": {false, "globs selecting documents; every match is read, so the order " +
 		"of the globs changes nothing."},
-}
-
-// validateOnly kinds have a schema but are not stored by the server: plan
-// answers not_stored for them. A resource would apply nothing and read
-// nothing back, so none is generated.
-var validateOnly = map[string]string{
-	"LicensePolicy": "licensepolicy.go: the policy lives in .vulnetix/license-policy.yaml; plan returns not_stored",
 }

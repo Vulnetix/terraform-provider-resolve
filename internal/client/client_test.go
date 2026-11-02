@@ -13,9 +13,9 @@ import (
 
 func TestAuthorizationHeader(t *testing.T) {
 	for token, want := range map[string]string{
-		"vmt_abc":         "Bearer vmt_abc",
-		"eyJhbGciOi.jwt":  "Bearer eyJhbGciOi.jwt",
-		"":                "",
+		"vmt_abc":        "Bearer vmt_abc",
+		"eyJhbGciOi.jwt": "Bearer eyJhbGciOi.jwt",
+		"":               "",
 	} {
 		if got := New(Options{Token: token}).authorization(); got != want {
 			t.Errorf("token %q: Authorization = %q, want %q", token, got, want)

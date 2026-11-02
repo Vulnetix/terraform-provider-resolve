@@ -14,7 +14,7 @@ import (
 
 // Generate the resources from the config kind schemas, then the docs from
 // the provider schema. Run go generate ./... after bumping config-schemas.
-//go:generate go run ./cmd/genresources -out internal/provider
+//go:generate go run ./cmd/genresources -out internal/provider -examples-out examples/resources
 //go:generate go run ./cmd/genresources -schemas cmd/genresources/testdata/schemas -out internal/provider -suffix _test -var testKinds
 //go:generate go tool tfplugindocs generate --provider-name vulnetix
 

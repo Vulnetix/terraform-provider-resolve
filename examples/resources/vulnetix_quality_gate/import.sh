@@ -1,2 +1,2 @@
-# A config object is imported by its name. QualityGate is always "default".
+# Import an existing QualityGate by its name (metadata.name).
 terraform import vulnetix_quality_gate.default default

@@ -11,7 +11,7 @@
 // schema attributes and the field map between them and the document spec.
 // A valueFrom secret becomes a write-only <name>_wo argument and a
 // <name>_wo_version trigger. An array is a list or a set as collections.go
-// decides, and a validate-only kind (validateOnly) gets no resource.
+// decides, and a validate-only kind (x-vulnetix.validateOnly) gets no resource.
 //
 // -schemas reads a directory instead, which the tests use to generate a test
 // kind with every supported shape.

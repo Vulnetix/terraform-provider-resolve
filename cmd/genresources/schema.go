@@ -420,12 +420,9 @@ func (s *schemaSet) annotationsOf(kind string) *annotations {
 	return nil
 }
 
-// isValidateOnly reads x-vulnetix.validateOnly, falling back to the list
-// kept for releases without annotations.
+// isValidateOnly reads x-vulnetix.validateOnly. A schema without the
+// annotation (the test schemas) is stored.
 func (s *schemaSet) isValidateOnly(kind string) bool {
-	if a := s.annotationsOf(kind); a != nil {
-		return a.ValidateOnly
-	}
-	_, ok := validateOnly[kind]
-	return ok
+	a := s.annotationsOf(kind)
+	return a != nil && a.ValidateOnly
 }

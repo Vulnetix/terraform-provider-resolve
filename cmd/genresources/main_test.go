@@ -177,7 +177,7 @@ func stripHeader(b []byte) []byte {
 	return b
 }
 
-// Every array of a released kind must be decided in collections.go from the
+// Every array of a served kind must be decided in collections.go from the
 // engine adapter, and every entry there must still name an array.
 func TestEveryArrayDecided(t *testing.T) {
 	set, err := loadSchemas(configschemas.FS(), "schemas")
@@ -191,6 +191,11 @@ func TestEveryArrayDecided(t *testing.T) {
 		}
 	}
 	for _, where := range g.undecided {
+		// A kind with no engine adapter has no evidence to decide from; it
+		// falls back to uniqueItems until its adapter is served.
+		if kind, _, _ := strings.Cut(where, "."); !served[kind] || set.isValidateOnly(kind) {
+			continue
+		}
 		t.Errorf("%s: no collections entry; decide list or set from the engine adapter", where)
 	}
 	for where := range collections {
@@ -273,5 +278,46 @@ func TestExampleHCL(t *testing.T) {
 	}
 	if err := writeExamples(t.TempDir(), bad, o); err == nil || !strings.Contains(err.Error(), "spec.nope: no such argument") {
 		t.Errorf("unknown key: %v", err)
+	}
+}
+
+// The checked-in examples must be what the generator writes from the
+// required config-schemas release, and nothing generated may be left over.
+func TestGeneratedExamplesUpToDate(t *testing.T) {
+	dir, ex := t.TempDir(), t.TempDir()
+	if err := run([]string{"-version", "check", "-out", dir, "-examples-out", ex}); err != nil {
+		t.Fatal(err)
+	}
+	checked := filepath.Join("..", "..", "examples", "resources")
+	list := func(root string) map[string]bool {
+		out := map[string]bool{}
+		for _, pat := range []string{"*/minimal.tf", "*/advanced.tf", "*/import.sh"} {
+			m, _ := filepath.Glob(filepath.Join(root, pat))
+			for _, f := range m {
+				rel, _ := filepath.Rel(root, f)
+				out[rel] = true
+			}
+		}
+		return out
+	}
+	fresh, have := list(ex), list(checked)
+	if len(fresh) == 0 {
+		t.Fatal("the generator wrote no examples")
+	}
+	for f := range fresh {
+		want, _ := os.ReadFile(filepath.Join(ex, f))
+		got, err := os.ReadFile(filepath.Join(checked, f))
+		if err != nil {
+			t.Errorf("examples/resources/%s is not checked in: run go generate ./...", f)
+			continue
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("examples/resources/%s is stale: run go generate ./...", f)
+		}
+	}
+	for f := range have {
+		if !fresh[f] {
+			t.Errorf("examples/resources/%s is no longer generated: run go generate ./...", f)
+		}
 	}
 }
