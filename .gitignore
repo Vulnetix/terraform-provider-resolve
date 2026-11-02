@@ -1,0 +1,7 @@
+dist/
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform-provider-vulnetix
+terraform-provider-vulnetix_*

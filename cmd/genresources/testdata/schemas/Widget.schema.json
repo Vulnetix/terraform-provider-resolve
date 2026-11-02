@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Vulnetix/config-schemas/releases/download/v0.0.0-dev/Widget.schema.json",
+  "title": "Widget",
+  "description": "A test kind with every shape the generator supports. Not a real kind.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "$ref": "common.schema.json#/$defs/apiVersion" },
+    "kind": { "const": "Widget" },
+    "metadata": { "$ref": "common.schema.json#/$defs/metadata" },
+    "spec": {
+      "type": "object",
+      "required": ["color"],
+      "additionalProperties": false,
+      "properties": {
+        "color": { "description": "The colour.", "type": "string", "enum": ["red", "blue"] },
+        "size": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "ratio": { "type": "number", "minimum": 0 },
+        "enabled": { "type": "boolean" },
+        "severity": { "description": "A shared enum.", "$ref": "common.schema.json#/$defs/severity", "default": "low" },
+        "token": { "description": "The widget's API token.", "$ref": "#/$defs/secret" },
+        "tags": { "type": "array", "items": { "type": "string" }, "maxItems": 5 },
+        "env": { "type": "object", "additionalProperties": { "type": "string" } },
+        "match": { "$ref": "common.schema.json#/$defs/celExpression" },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["purl"],
+            "properties": {
+              "purl": { "$ref": "common.schema.json#/$defs/purl" },
+              "reason": { "$ref": "common.schema.json#/$defs/vexJustification" }
+            }
+          }
+        },
+        "nested": {
+          "type": "object",
+          "properties": {
+            "deepFlag": { "type": "boolean" },
+            "within30Days": { "type": "string" },
+            "webhookSecret": { "$ref": "#/$defs/secret" }
+          }
+        },
+        "extra": { "oneOf": [ { "type": "string" }, { "type": "object" } ] }
+      }
+    }
+  },
+  "$defs": {
+    "secret": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valueFrom"],
+      "properties": { "valueFrom": { "$ref": "common.schema.json#/$defs/valueFrom" } }
+    }
+  }
+}

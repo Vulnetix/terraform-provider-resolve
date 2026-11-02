@@ -1,0 +1,35 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: [self-hosted, Linux, X64, vulnetix-local]
+    timeout-minutes: 15
+    steps:
+      # Big Go builds overflow the runner's small /tmp; build in the job's temp.
+      - name: Use the job temp dir for Go
+        run: echo "GOTMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      # The resource tests drive a real terraform binary against an
+      # in-process fake of the config API.
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./...
+      # Generated resources and docs must be committed as generated.
+      - name: Check generated files
+        run: |
+          go generate ./...
+          git diff --exit-code -- internal/provider docs

@@ -1,0 +1,188 @@
+package provider
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+
+	"github.com/vulnetix/terraform-provider-vulnetix/internal/client"
+)
+
+// fakeAPI is an in-memory config API with the engine's behaviour where it
+// matters to the provider: PUT merges into the stored spec, the stored
+// object can carry fields nobody sent (the row's column defaults), and
+// unknown tokens are refused.
+type fakeAPI struct {
+	t     *testing.T
+	token string
+
+	mu       sync.Mutex
+	objects  map[string]client.Document // kind/name
+	puts     []map[string]any           // every PUT body, in order
+	deletes  []string                   // kind/name?manager
+	defaults map[string]map[string]any  // kind -> spec fields set on insert
+	feeds    []client.Feed
+	entries  map[string][]client.FeedEntry
+	locked   bool
+}
+
+func newFakeAPI(t *testing.T) (*fakeAPI, *httptest.Server) {
+	f := &fakeAPI{
+		t: t, token: "vmt_test",
+		objects:  map[string]client.Document{},
+		defaults: map[string]map[string]any{},
+		entries:  map[string][]client.FeedEntry{},
+	}
+	srv := httptest.NewServer(f)
+	t.Cleanup(srv.Close)
+	return f, srv
+}
+
+func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if r.Header.Get("Authorization") != "Bearer "+f.token {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not authenticated"})
+		return
+	}
+	p := strings.TrimPrefix(r.URL.Path, "/v1")
+	switch {
+	case p == "/config/kinds" && r.Method == http.MethodGet:
+		writeJSON(w, http.StatusOK, map[string]any{
+			"apiVersion": "vulnetix.com/v1", "schemaVersion": "v1.0.1",
+			"kinds":       []map[string]any{{"kind": "QualityGate", "schemaUrl": "https://example.test/QualityGate.schema.json", "dependsOn": []string{}, "schema": map[string]any{"title": "QualityGate"}}},
+			"schemaKinds": []string{"QualityGate"},
+		})
+	case strings.HasPrefix(p, "/config/objects/"):
+		f.object(w, r, strings.TrimPrefix(p, "/config/objects/"))
+	case p == "/detection-rule-feeds" && r.Method == http.MethodGet:
+		if f.locked {
+			writeJSON(w, http.StatusOK, map[string]any{"planLocked": true, "requiredPlan": "pro", "feeds": []any{}})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"feeds": f.feeds})
+	case strings.HasPrefix(p, "/detection-rule-feeds/") && r.Method == http.MethodGet:
+		id := strings.TrimPrefix(p, "/detection-rule-feeds/")
+		for _, fd := range f.feeds {
+			if fd.UUID == id {
+				writeJSON(w, http.StatusOK, map[string]any{"feed": fd, "entries": f.entries[id]})
+				return
+			}
+		}
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+	default:
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no route " + r.Method + " " + p})
+	}
+}
+
+func (f *fakeAPI) object(w http.ResponseWriter, r *http.Request, key string) {
+	switch r.Method {
+	case http.MethodGet:
+		d, ok := f.objects[key]
+		if !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"document": d, "manager": "terraform"})
+	case http.MethodPut:
+		var body struct {
+			Document client.Document `json:"document"`
+			Manager  string          `json:"manager"`
+		}
+		raw := map[string]any{}
+		dec := json.NewDecoder(r.Body)
+		dec.UseNumber()
+		if err := dec.Decode(&raw); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+			return
+		}
+		b, _ := json.Marshal(raw)
+		_ = json.Unmarshal(b, &body)
+		f.puts = append(f.puts, raw)
+		if body.Document.Kind+"/"+body.Document.Metadata.Name != key {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "document does not match the path"})
+			return
+		}
+		cur, exists := f.objects[key]
+		if !exists {
+			cur = client.Document{APIVersion: "vulnetix.com/v1", Kind: body.Document.Kind, Metadata: body.Document.Metadata, Spec: map[string]any{}}
+			for k, v := range f.defaults[body.Document.Kind] {
+				cur.Spec[k] = v
+			}
+		}
+		cur.Metadata = body.Document.Metadata
+		mergeSpec(cur.Spec, body.Document.Spec)
+		f.objects[key] = cur
+		writeJSON(w, http.StatusOK, map[string]any{"document": cur, "manager": body.Manager})
+	case http.MethodDelete:
+		f.deletes = append(f.deletes, key+"?manager="+r.URL.Query().Get("manager"))
+		if _, ok := f.objects[key]; !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+			return
+		}
+		delete(f.objects, key)
+		w.WriteHeader(http.StatusNoContent)
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method"})
+	}
+}
+
+// mergeSpec is the engine's merge: a field the document leaves out keeps its
+// current value.
+func mergeSpec(dst, src map[string]any) {
+	for k, v := range src {
+		if sm, ok := v.(map[string]any); ok {
+			if dm, ok := dst[k].(map[string]any); ok {
+				mergeSpec(dm, sm)
+				continue
+			}
+		}
+		dst[k] = v
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func (f *fakeAPI) lastPut() map[string]any {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.puts) == 0 {
+		return nil
+	}
+	return f.puts[len(f.puts)-1]
+}
+
+func (f *fakeAPI) putCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.puts)
+}
+
+// testFactories serves the generated kinds plus the test kinds.
+func testFactories() map[string]func() (tfprotov6.ProviderServer, error) {
+	return map[string]func() (tfprotov6.ProviderServer, error){
+		"vulnetix": providerserver.NewProtocol6WithError(&vulnetixProvider{
+			version: "test",
+			kinds:   append(append([]kindSpec{}, generatedKinds...), testKinds...),
+		}),
+	}
+}
+
+func providerBlock(url string) string {
+	return `
+provider "vulnetix" {
+  endpoint = "` + url + `/v1"
+  token    = "vmt_test"
+}
+`
+}

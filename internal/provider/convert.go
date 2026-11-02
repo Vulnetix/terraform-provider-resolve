@@ -1,0 +1,378 @@
+package provider
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"math/big"
+	"strconv"
+
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
+)
+
+// The resource works on raw tftypes values rather than per-kind structs, so a
+// kind is nothing more than its generated schema and field list.
+
+// objectAttrs splits an object value into its attributes. A null or unknown
+// value has none.
+func objectAttrs(v tftypes.Value) (map[string]tftypes.Value, error) {
+	if v.IsNull() || !v.IsKnown() {
+		return map[string]tftypes.Value{}, nil
+	}
+	m := map[string]tftypes.Value{}
+	if err := v.As(&m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func isSet(v tftypes.Value) bool {
+	return v.Type() != nil && v.IsKnown() && !v.IsNull()
+}
+
+// specInput is what toSpec reads: the plan, plus the config (the only place a
+// write-only value exists) and the prior state (to tell whether a secret's
+// version moved). config and prior may be null.
+type specInput struct {
+	plan, config, prior tftypes.Value
+	create              bool
+}
+
+// toSpec builds a document spec from the attributes fields describe.
+func toSpec(in specInput, fields []field) (map[string]any, error) {
+	plan, err := objectAttrs(in.plan)
+	if err != nil {
+		return nil, err
+	}
+	config, err := objectAttrs(in.config)
+	if err != nil {
+		return nil, err
+	}
+	prior, err := objectAttrs(in.prior)
+	if err != nil {
+		return nil, err
+	}
+	spec := map[string]any{}
+	for _, f := range fields {
+		switch {
+		case f.Local:
+			continue
+		case f.WriteOnly:
+			cv, ok := config[f.Attr]
+			if !ok || !isSet(cv) || !secretChanged(f, in.create, plan, prior) {
+				continue
+			}
+			var s string
+			if err := cv.As(&s); err != nil {
+				return nil, fmt.Errorf("%s: %w", f.Attr, err)
+			}
+			spec[f.JSON] = s
+			continue
+		}
+		v, ok := plan[f.Attr]
+		if !ok || !isSet(v) {
+			continue
+		}
+		child := specInput{plan: v, config: nullOr(config[f.Attr]), prior: nullOr(prior[f.Attr]), create: in.create || !isSet(nullOr(prior[f.Attr]))}
+		out, err := valueToJSON(child, f)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", f.Attr, err)
+		}
+		spec[f.JSON] = out
+	}
+	return spec, nil
+}
+
+// secretChanged reports whether a write-only value must be sent. Terraform
+// never shows a write-only value in a plan, so the only signal that it
+// changed is its _wo_version sibling. Without one it is sent every time.
+func secretChanged(f field, create bool, plan, prior map[string]tftypes.Value) bool {
+	if create || f.Version == "" || len(prior) == 0 {
+		return true
+	}
+	pv, cv := nullOr(prior[f.Version]), nullOr(plan[f.Version])
+	return !pv.Equal(cv)
+}
+
+var nullValue = tftypes.NewValue(tftypes.DynamicPseudoType, nil)
+
+func nullOr(v tftypes.Value) tftypes.Value {
+	if v.Type() == nil {
+		return nullValue
+	}
+	return v
+}
+
+func valueToJSON(in specInput, f field) (any, error) {
+	v := in.plan
+	switch f.Kind {
+	case fieldObject:
+		return toSpec(in, f.Children)
+	case fieldList:
+		var elems []tftypes.Value
+		if err := v.As(&elems); err != nil {
+			return nil, err
+		}
+		out := make([]any, 0, len(elems))
+		for _, e := range elems {
+			j, err := scalarToJSON(e, f.Elem)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, j)
+		}
+		return out, nil
+	case fieldMap:
+		var elems map[string]tftypes.Value
+		if err := v.As(&elems); err != nil {
+			return nil, err
+		}
+		out := make(map[string]any, len(elems))
+		for k, e := range elems {
+			j, err := scalarToJSON(e, f.Elem)
+			if err != nil {
+				return nil, err
+			}
+			out[k] = j
+		}
+		return out, nil
+	case fieldListObject:
+		var elems []tftypes.Value
+		if err := v.As(&elems); err != nil {
+			return nil, err
+		}
+		out := make([]any, 0, len(elems))
+		for _, e := range elems {
+			j, err := toSpec(specInput{plan: e, config: nullValue, prior: nullValue, create: true}, f.Children)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, j)
+		}
+		return out, nil
+	case fieldMapObject:
+		var elems map[string]tftypes.Value
+		if err := v.As(&elems); err != nil {
+			return nil, err
+		}
+		out := make(map[string]any, len(elems))
+		for k, e := range elems {
+			j, err := toSpec(specInput{plan: e, config: nullValue, prior: nullValue, create: true}, f.Children)
+			if err != nil {
+				return nil, err
+			}
+			out[k] = j
+		}
+		return out, nil
+	}
+	return scalarToJSON(v, f.Kind)
+}
+
+func scalarToJSON(v tftypes.Value, k fieldKind) (any, error) {
+	if !isSet(v) {
+		return nil, nil
+	}
+	switch k {
+	case fieldString:
+		var s string
+		err := v.As(&s)
+		return s, err
+	case fieldJSON:
+		var s string
+		if err := v.As(&s); err != nil {
+			return nil, err
+		}
+		var out any
+		dec := json.NewDecoder(bytes.NewReader([]byte(s)))
+		dec.UseNumber()
+		if err := dec.Decode(&out); err != nil {
+			return nil, fmt.Errorf("not valid JSON: %w", err)
+		}
+		return out, nil
+	case fieldBool:
+		var b bool
+		err := v.As(&b)
+		return b, err
+	case fieldInt:
+		var n big.Float
+		if err := v.As(&n); err != nil {
+			return nil, err
+		}
+		i, acc := n.Int64()
+		if acc != big.Exact {
+			return nil, fmt.Errorf("%s is not a whole number", n.String())
+		}
+		return i, nil
+	case fieldFloat:
+		var n big.Float
+		if err := v.As(&n); err != nil {
+			return nil, err
+		}
+		f, _ := n.Float64()
+		return f, nil
+	}
+	return nil, fmt.Errorf("field kind %d is not a scalar", k)
+}
+
+// fromSpec builds the attribute values fields describe from a document spec.
+//
+// With keepAll false only attributes already set in prior are filled in: the
+// engine merges, and the tenant's row carries server defaults the
+// configuration never mentioned, so reading those back would show a diff on
+// every plan. keepAll is true on import, where there is no prior to go by.
+func fromSpec(spec map[string]any, typ tftypes.Object, prior tftypes.Value, fields []field, keepAll bool) (map[string]tftypes.Value, error) {
+	pm, err := objectAttrs(prior)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]tftypes.Value{}
+	for _, f := range fields {
+		at, ok := typ.AttributeTypes[f.Attr]
+		if !ok {
+			return nil, fmt.Errorf("schema has no attribute %s", f.Attr)
+		}
+		pv := pm[f.Attr]
+		switch {
+		case f.WriteOnly:
+			out[f.Attr] = tftypes.NewValue(at, nil)
+			continue
+		case f.Local:
+			if pv.Type() == nil {
+				pv = tftypes.NewValue(at, nil)
+			}
+			out[f.Attr] = pv
+			continue
+		}
+		raw, present := spec[f.JSON]
+		if !present || raw == nil || (!keepAll && !isSet(nullOr(pv))) {
+			out[f.Attr] = tftypes.NewValue(at, nil)
+			continue
+		}
+		v, err := jsonToValue(raw, at, f, nullOr(pv), keepAll)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", f.Attr, err)
+		}
+		out[f.Attr] = v
+	}
+	return out, nil
+}
+
+func jsonToValue(raw any, at tftypes.Type, f field, prior tftypes.Value, keepAll bool) (tftypes.Value, error) {
+	switch f.Kind {
+	case fieldObject:
+		m, ok := raw.(map[string]any)
+		if !ok {
+			return tftypes.Value{}, fmt.Errorf("expected an object, got %T", raw)
+		}
+		ot := at.(tftypes.Object)
+		vals, err := fromSpec(m, ot, prior, f.Children, keepAll)
+		if err != nil {
+			return tftypes.Value{}, err
+		}
+		return tftypes.NewValue(ot, vals), nil
+	case fieldList, fieldListObject:
+		arr, ok := raw.([]any)
+		if !ok {
+			return tftypes.Value{}, fmt.Errorf("expected a list, got %T", raw)
+		}
+		et := at.(tftypes.List).ElementType
+		vals := make([]tftypes.Value, 0, len(arr))
+		for _, e := range arr {
+			v, err := elemToValue(e, et, f)
+			if err != nil {
+				return tftypes.Value{}, err
+			}
+			vals = append(vals, v)
+		}
+		return tftypes.NewValue(at, vals), nil
+	case fieldMap, fieldMapObject:
+		m, ok := raw.(map[string]any)
+		if !ok {
+			return tftypes.Value{}, fmt.Errorf("expected a map, got %T", raw)
+		}
+		et := at.(tftypes.Map).ElementType
+		vals := make(map[string]tftypes.Value, len(m))
+		for k, e := range m {
+			v, err := elemToValue(e, et, f)
+			if err != nil {
+				return tftypes.Value{}, err
+			}
+			vals[k] = v
+		}
+		return tftypes.NewValue(at, vals), nil
+	}
+	return scalarToValue(raw, at, f.Kind)
+}
+
+// elemToValue converts one list or map element. Elements of a nested list
+// are taken whole from the server: there is no stable way to match them to
+// prior elements, so the managed-only rule stops at the collection.
+func elemToValue(e any, et tftypes.Type, f field) (tftypes.Value, error) {
+	if f.Kind == fieldListObject || f.Kind == fieldMapObject {
+		m, ok := e.(map[string]any)
+		if !ok {
+			return tftypes.Value{}, fmt.Errorf("expected an object element, got %T", e)
+		}
+		ot := et.(tftypes.Object)
+		vals, err := fromSpec(m, ot, nullValue, f.Children, true)
+		if err != nil {
+			return tftypes.Value{}, err
+		}
+		return tftypes.NewValue(ot, vals), nil
+	}
+	return scalarToValue(e, et, f.Elem)
+}
+
+func scalarToValue(raw any, at tftypes.Type, k fieldKind) (tftypes.Value, error) {
+	if raw == nil {
+		return tftypes.NewValue(at, nil), nil
+	}
+	switch k {
+	case fieldString:
+		s, ok := raw.(string)
+		if !ok {
+			return tftypes.Value{}, fmt.Errorf("expected a string, got %T", raw)
+		}
+		return tftypes.NewValue(at, s), nil
+	case fieldJSON:
+		b, err := json.Marshal(raw)
+		if err != nil {
+			return tftypes.Value{}, err
+		}
+		return tftypes.NewValue(at, string(b)), nil
+	case fieldBool:
+		b, ok := raw.(bool)
+		if !ok {
+			return tftypes.Value{}, fmt.Errorf("expected a boolean, got %T", raw)
+		}
+		return tftypes.NewValue(at, b), nil
+	case fieldInt, fieldFloat:
+		n, err := toBigFloat(raw)
+		if err != nil {
+			return tftypes.Value{}, err
+		}
+		return tftypes.NewValue(at, n), nil
+	}
+	return tftypes.Value{}, fmt.Errorf("field kind %d is not a scalar", k)
+}
+
+func toBigFloat(raw any) (*big.Float, error) {
+	switch n := raw.(type) {
+	case json.Number:
+		f, _, err := big.ParseFloat(n.String(), 10, 512, big.ToNearestEven)
+		return f, err
+	case float64:
+		return big.NewFloat(n), nil
+	case int64:
+		return new(big.Float).SetInt64(n), nil
+	case int:
+		return new(big.Float).SetInt64(int64(n)), nil
+	case string:
+		f, err := strconv.ParseFloat(n, 64)
+		if err != nil {
+			return nil, fmt.Errorf("expected a number, got %q", n)
+		}
+		return big.NewFloat(f), nil
+	}
+	return nil, fmt.Errorf("expected a number, got %T", raw)
+}
