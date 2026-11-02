@@ -28,6 +28,17 @@ jobs:
       # Big Go builds overflow the runner's small /tmp; build in the job's temp.
       - name: Use the job temp dir for Go
         run: echo "GOTMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      # The registries refuse an unsigned release, so stop before building
+      # one when the signing key has not been added.
+      - name: Check for the signing secrets
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          PASSPHRASE: ${{ secrets.PASSPHRASE }}
+        run: |
+          if [ -z "$GPG_PRIVATE_KEY" ] || [ -z "$PASSPHRASE" ]; then
+            echo "::error::Add the GPG_PRIVATE_KEY and PASSPHRASE secrets (the key registered on the registries) before tagging a release."
+            exit 1
+          fi
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0

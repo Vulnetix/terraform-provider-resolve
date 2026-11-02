@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -11,7 +12,7 @@ permissions:
 jobs:
   test:
     runs-on: [self-hosted, Linux, X64, vulnetix-local]
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       # Big Go builds overflow the runner's small /tmp; build in the job's temp.
       - name: Use the job temp dir for Go
@@ -21,15 +22,79 @@ jobs:
         with:
           go-version-file: go.mod
       # The resource tests drive a real terraform binary against an
-      # in-process fake of the config API.
+      # in-process fake of the config API. Write-only arguments need 1.11+.
       - uses: hashicorp/setup-terraform@v3
         with:
+          terraform_version: '~1.11'
           terraform_wrapper: false
       - run: go build ./...
       - run: go vet ./...
       - run: go test ./...
-      # Generated resources and docs must be committed as generated.
+      # Generated resources, examples and docs must be committed as generated.
       - name: Check generated files
         run: |
           go generate ./...
-          git diff --exit-code -- internal/provider docs
+          git status --porcelain -- internal/provider examples docs
+          git diff --exit-code -- internal/provider examples docs
+          test -z "$(git status --porcelain --untracked-files=all -- internal/provider examples docs)"
+
+  # The acceptance suite (TestAcc*) against a real test tenant, under both
+  # Terraform and OpenTofu. It needs the repository secrets
+  # VULNETIX_ENDPOINT and VULNETIX_CONFIG_TOKEN (an owner or admin vmt_
+  # token for every served kind) and is skipped without them. The two tools
+  # share the tenant, so they run one after the other.
+  acceptance:
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: [self-hosted, Linux, X64, vulnetix-local]
+    timeout-minutes: 45
+    concurrency:
+      group: acceptance-tenant
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        tool: [terraform, opentofu]
+    env:
+      VULNETIX_ENDPOINT: ${{ secrets.VULNETIX_ENDPOINT }}
+      VULNETIX_CONFIG_TOKEN: ${{ secrets.VULNETIX_CONFIG_TOKEN }}
+    steps:
+      - name: Check for the acceptance secrets
+        id: secrets
+        run: |
+          if [ -n "$VULNETIX_ENDPOINT" ] && [ -n "$VULNETIX_CONFIG_TOKEN" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::VULNETIX_ENDPOINT or VULNETIX_CONFIG_TOKEN is not set; skipping the acceptance suite."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Use the job temp dir for Go
+        if: steps.secrets.outputs.ok == 'true'
+        run: echo "GOTMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v5
+        if: steps.secrets.outputs.ok == 'true'
+      - uses: actions/setup-go@v6
+        if: steps.secrets.outputs.ok == 'true'
+        with:
+          go-version-file: go.mod
+      - uses: hashicorp/setup-terraform@v3
+        if: steps.secrets.outputs.ok == 'true' && matrix.tool == 'terraform'
+        with:
+          terraform_version: '~1.11'
+          terraform_wrapper: false
+      - uses: opentofu/setup-opentofu@v1
+        if: steps.secrets.outputs.ok == 'true' && matrix.tool == 'opentofu'
+        with:
+          tofu_version: '~1.11'
+          tofu_wrapper: false
+      - name: Point the test harness at OpenTofu
+        if: steps.secrets.outputs.ok == 'true' && matrix.tool == 'opentofu'
+        run: |
+          echo "TF_ACC_TERRAFORM_PATH=$(command -v tofu)" >> "$GITHUB_ENV"
+          echo "TF_ACC_PROVIDER_NAMESPACE=vulnetix" >> "$GITHUB_ENV"
+      - name: Acceptance tests (${{ matrix.tool }})
+        if: steps.secrets.outputs.ok == 'true'
+        env:
+          TF_ACC: '1'
+        run: go test ./internal/provider -run '^TestAcc' -count=1 -timeout 40m -v
