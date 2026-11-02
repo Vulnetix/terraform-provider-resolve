@@ -120,9 +120,13 @@ type Object struct {
 	Warnings []Condition `json:"warnings,omitempty"`
 }
 
-// ObjectStatus is the OpenAPI ObjectStatus.
+// ObjectStatus is the OpenAPI ObjectStatus. A kind may report more fields
+// beside these (Extra): the authorization URL a messaging connection waits
+// on, an invitation's expiry, a service account's credentials, shown once.
 type ObjectStatus struct {
-	// Phase is Applied, Unchanged, Deleted, Absent or Unmanaged.
+	// Phase is Applied, Unchanged, Deleted, Absent or Unmanaged; or, for a
+	// kind that waits on someone, Pending or AwaitingAuthorization; or, for
+	// a write in Guardian that failed, Failed (Message says why).
 	Phase       string `json:"phase"`
 	Manager     string `json:"manager,omitempty"`
 	ObjectUUID  string `json:"objectUuid,omitempty"`
@@ -130,6 +134,39 @@ type ObjectStatus struct {
 	AppliedHash string `json:"appliedHash,omitempty"`
 	SourceRef   string `json:"sourceRef,omitempty"`
 	Drift       bool   `json:"drift,omitempty"`
+	// Message says why a write failed.
+	Message string `json:"message,omitempty"`
+	// Extra holds every other field of the status, as the kind wrote it.
+	Extra map[string]any `json:"-"`
+}
+
+// Status phases beyond the engine's own Applied and Unchanged.
+const (
+	PhaseApplied               = "Applied"
+	PhasePending               = "Pending"
+	PhaseAwaitingAuthorization = "AwaitingAuthorization"
+	PhaseFailed                = "Failed"
+)
+
+// UnmarshalJSON reads the known fields and keeps the rest in Extra.
+func (s *ObjectStatus) UnmarshalJSON(b []byte) error {
+	type plain ObjectStatus
+	var p plain
+	if err := unmarshalNumber(b, &p); err != nil {
+		return err
+	}
+	var all map[string]any
+	if err := unmarshalNumber(b, &all); err != nil {
+		return err
+	}
+	for _, k := range []string{"phase", "manager", "objectUuid", "appliedAt", "appliedHash", "sourceRef", "drift", "message"} {
+		delete(all, k)
+	}
+	if len(all) > 0 {
+		p.Extra = all
+	}
+	*s = ObjectStatus(p)
+	return nil
 }
 
 // Condition is a plan warning or blocking condition (OpenAPI Condition).

@@ -36,14 +36,20 @@ type fakeAPI struct {
 	models   []client.AiModel
 	vex      []map[string]any
 	repos    []client.GitHubRepo
+	// phases is each object's phase as the last apply left it.
+	phases map[string]string
+	// forbidden kinds answer 403, as an owner-only kind does to a token without the owner role.
+	forbidden map[string]bool
 }
 
 func newFakeAPI(t *testing.T) (*fakeAPI, *httptest.Server) {
 	f := &fakeAPI{
 		t: t, token: "vmt_test",
-		objects:  map[string]client.Document{},
-		defaults: map[string]map[string]any{},
-		entries:  map[string][]client.FeedEntry{},
+		objects:   map[string]client.Document{},
+		defaults:  map[string]map[string]any{},
+		entries:   map[string][]client.FeedEntry{},
+		phases:    map[string]string{},
+		forbidden: map[string]bool{},
 	}
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
@@ -96,13 +102,21 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (f *fakeAPI) object(w http.ResponseWriter, r *http.Request, key string) {
 	switch r.Method {
 	case http.MethodGet:
+		if f.forbidden[strings.SplitN(key, "/", 2)[0]] {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "only an owner token may apply this kind"})
+			return
+		}
 		d, ok := f.objects[key]
 		if !ok {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"document": redacted(d), "status": map[string]any{"phase": "Applied", "manager": "terraform"}})
+		writeJSON(w, http.StatusOK, map[string]any{"document": redacted(d), "status": map[string]any{"phase": f.phaseOf(key), "manager": "terraform"}})
 	case http.MethodPut:
+		if f.forbidden[strings.SplitN(key, "/", 2)[0]] {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "only an owner token may apply this kind"})
+			return
+		}
 		var body struct {
 			Document client.Document `json:"document"`
 			Manager  string          `json:"manager"`
@@ -129,13 +143,24 @@ func (f *fakeAPI) object(w http.ResponseWriter, r *http.Request, key string) {
 			}
 		}
 		cur.Metadata = body.Document.Metadata
-		if replaceKinds[body.Document.Kind] {
-			cur.Spec = body.Document.Spec
-		} else {
+		if mergeKinds[body.Document.Kind] {
 			mergeSpec(cur.Spec, body.Document.Spec)
+		} else {
+			cur.Spec = body.Document.Spec
+		}
+		status := map[string]any{"phase": "Applied", "manager": body.Manager}
+		if ext := f.applyStatus(body.Document, !exists); ext != nil {
+			if ext["phase"] == "Failed" {
+				writeJSON(w, http.StatusBadGateway, map[string]string{"error": "external_failed", "message": key + ": " + fmt.Sprint(ext["message"])})
+				return
+			}
+			for k, v := range ext {
+				status[k] = v
+			}
 		}
 		f.objects[key] = cur
-		writeJSON(w, http.StatusOK, map[string]any{"document": redacted(cur), "action": "update", "status": map[string]any{"phase": "Applied", "manager": body.Manager}})
+		f.phases[key] = fmt.Sprint(status["phase"])
+		writeJSON(w, http.StatusOK, map[string]any{"document": redacted(cur), "action": "update", "status": status})
 	case http.MethodDelete:
 		f.deletes = append(f.deletes, key+"?manager="+r.URL.Query().Get("manager"))
 		if _, ok := f.objects[key]; !ok {
@@ -265,13 +290,45 @@ func allTestKinds() []kindSpec {
 	return append(append(append([]kindSpec{}, generatedKinds...), generatedKindsUnserved...), testKinds...)
 }
 
-// replaceKinds are the kinds whose engine adapter overwrites the whole spec
-// on apply (Diff "with replace semantics": apispecsource.go, malwareioc.go,
-// remediationpolicy.go, riskstrategy.go, suppression.go, vexsource.go)
-// instead of merging into it.
-var replaceKinds = map[string]bool{
-	"ApiSpecSource": true, "MalwareIoc": true, "RemediationPolicy": true,
-	"RiskStrategy": true, "Suppression": true, "VexSource": true,
+// mergeKinds are the kinds whose engine adapter merges a document into the
+// stored object (MergeDiff: a field the document leaves out keeps its
+// value). Every other kind replaces its spec on apply, as RecordKind and the
+// wholly declared adapters do.
+var mergeKinds = map[string]bool{
+	"AiFirewallPolicy": true, "AiProvider": true, "AwsAccount": true, "AwsConnection": true,
+	"CloudSensors": true, "JailExemption": true, "JailPolicy": true, "Organization": true,
+	"PackageFirewallPolicy": true, "PackageList": true, "QualityGate": true,
+}
+
+func (f *fakeAPI) phaseOf(key string) string {
+	if p := f.phases[key]; p != "" {
+		return p
+	}
+	return "Applied"
+}
+
+// siemKinds are written in Guardian, after the config database.
+var siemKinds = map[string]bool{"SavedSearch": true, "DetectionRule": true, "AlertTrigger": true, "ScheduledReport": true, "LogSource": true}
+
+// applyStatus is what the engine adds to an apply's status for the kinds that
+// report more than Applied: a member's invitation is Pending, a messaging
+// connection waits for a person (AwaitingAuthorization, with its URL), a
+// service account's credentials and a log source's ingest token are shown
+// once, and a SIEM kind named refuse-* is refused by Guardian.
+func (f *fakeAPI) applyStatus(d client.Document, created bool) map[string]any {
+	switch {
+	case siemKinds[d.Kind] && strings.HasPrefix(d.Metadata.Name, "refuse-"):
+		return map[string]any{"phase": "Failed", "message": "Guardian refused the " + d.Kind}
+	case d.Kind == "Member":
+		return map[string]any{"phase": "Pending", "invitationExpires": "2026-12-01T00:00:00Z"}
+	case d.Kind == "MessagingConnection" && created:
+		return map[string]any{"phase": "AwaitingAuthorization", "authorizationUrl": "https://auth.example.test/slack?c=" + d.Metadata.Name}
+	case d.Kind == "ServiceAccount" && created:
+		return map[string]any{"principal": "sa-" + d.Metadata.Name, "apiKey": "key-" + d.Metadata.Name, "secret": "shh-" + d.Metadata.Name}
+	case d.Kind == "LogSource" && created:
+		return map[string]any{"ingestToken": "gdn_" + d.Metadata.Name}
+	}
+	return nil
 }
 
 // page cuts one page like the vdb-site list routes (paginationOf).

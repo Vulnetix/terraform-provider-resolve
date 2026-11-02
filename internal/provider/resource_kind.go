@@ -28,12 +28,13 @@ const (
 	attrName        = "name"
 	attrLabels      = "labels"
 	attrAnnotations = "annotations"
+	attrStatus      = "status"
 )
 
 // reservedAttrs may not be generated from a spec: the first four are the
 // resource's own, the rest are Terraform meta-arguments.
 var reservedAttrs = map[string]bool{
-	attrID: true, attrName: true, attrLabels: true, attrAnnotations: true,
+	attrID: true, attrName: true, attrLabels: true, attrAnnotations: true, attrStatus: true,
 	"count": true, "for_each": true, "provider": true, "lifecycle": true,
 	"depends_on": true, "provisioner": true, "connection": true,
 }
@@ -98,6 +99,7 @@ func (r *kindResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 			PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		}
 	}
+	attrs[attrStatus] = statusAttribute()
 	attrs[attrLabels] = schema.MapAttribute{
 		MarkdownDescription: "Free key/value labels (`metadata.labels`). Stored with the object, never interpreted by the server.",
 		ElementType:         types.StringType,
@@ -117,10 +119,13 @@ func (r *kindResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 		deps = "\n\nAn object of this kind can reference " + strings.Join(names, ", ") +
 			" objects. Reference those resources' attributes, or add `depends_on`, so Terraform applies them first."
 	}
+	if r.spec.OwnerOnly {
+		deps += "\n\n" + r.spec.Kind + " decides who can act for the tenant, so it can only be applied with a token that has the owner role and lists `" + r.spec.Kind + "` among its kinds."
+	}
 	resp.Schema = schema.Schema{
 		MarkdownDescription: r.spec.Description + deps + "\n\nManages the `" + r.spec.Kind + "` config kind through `/config/objects/" + r.spec.Kind + "/{name}`. " +
 			"Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.\n\n" +
-			"Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object.",
+			"Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as `ApiSpecSource`, `RiskStrategy` and `VexSource`) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as `Organization`). Some kinds wait on a person after they are applied (an invited `Member`, a Slack connection): `status.phase` says so, and Terraform does not wait.",
 		Attributes: attrs,
 	}
 }
@@ -191,7 +196,7 @@ func stringMap(v tftypes.Value) (map[string]string, error) {
 // the new state to equal every configured value, and the server's answer can
 // carry fields the configuration does not set. Write-only values are already
 // null in a plan.
-func stateFromPlan(plan tftypes.Value) (tftypes.Value, error) {
+func stateFromPlan(plan tftypes.Value, status tftypes.Value) (tftypes.Value, error) {
 	attrs, err := objectAttrs(plan)
 	if err != nil {
 		return tftypes.Value{}, err
@@ -200,6 +205,7 @@ func stateFromPlan(plan tftypes.Value) (tftypes.Value, error) {
 	if n, ok := attrs[attrName]; ok {
 		attrs[attrID] = n
 	}
+	attrs[attrStatus] = status
 	return tftypes.NewValue(plan.Type(), attrs), nil
 }
 
@@ -213,11 +219,20 @@ func (r *kindResource) apply(ctx context.Context, plan, config, prior tftypes.Va
 		diags.AddError("Could not build the "+r.spec.Kind+" document", err.Error())
 		return tftypes.Value{}, false
 	}
-	if _, err := r.client.PutObject(ctx, doc); err != nil {
-		diags.AddError("Could not apply "+r.spec.Kind+"/"+doc.Metadata.Name, err.Error())
+	obj, err := r.client.PutObject(ctx, doc)
+	if err != nil {
+		diags.AddError("Could not apply "+r.spec.Kind+"/"+doc.Metadata.Name, err.Error()+ownerHint(r.spec, err)+guardianHint(err))
 		return tftypes.Value{}, false
 	}
-	state, err := stateFromPlan(plan)
+	if msg := failedStatus(obj.Status); msg != "" {
+		diags.AddError("Could not apply "+r.spec.Kind+"/"+doc.Metadata.Name, msg)
+		return tftypes.Value{}, false
+	}
+	var priorStatus tftypes.Value
+	if pa, err := objectAttrs(prior); err == nil {
+		priorStatus = nullOr(pa[attrStatus])
+	}
+	state, err := stateFromPlan(plan, buildStatus(obj.Status, priorStatus))
 	if err != nil {
 		diags.AddError("Could not record state", err.Error())
 		return tftypes.Value{}, false
@@ -282,6 +297,7 @@ func (r *kindResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	vals[attrName] = tftypes.NewValue(tftypes.String, name)
 	vals[attrLabels] = metaMap(obj.Document.Metadata.Labels, attrs[attrLabels], keepAll)
 	vals[attrAnnotations] = metaMap(obj.Document.Metadata.Annotations, attrs[attrAnnotations], keepAll)
+	vals[attrStatus] = buildStatus(obj.Status, nullOr(attrs[attrStatus]))
 	resp.State.Raw = tftypes.NewValue(typ, vals)
 	if keepAll {
 		resp.Diagnostics.Append(resp.Private.SetKey(ctx, privateImported, nil)...)
@@ -319,7 +335,7 @@ func (r *kindResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		return
 	}
 	if err := r.client.DeleteObject(ctx, r.spec.Kind, name); err != nil {
-		resp.Diagnostics.AddError("Could not delete "+r.spec.Kind+"/"+name, err.Error())
+		resp.Diagnostics.AddError("Could not delete "+r.spec.Kind+"/"+name, err.Error()+ownerHint(r.spec, err)+guardianHint(err))
 	}
 }
 

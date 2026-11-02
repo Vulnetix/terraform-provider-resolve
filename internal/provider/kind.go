@@ -20,6 +20,8 @@ type kindSpec struct {
 	NamePattern string
 	// DependsOn are the kinds this kind can reference (x-vulnetix.dependsOn).
 	DependsOn []string
+	// OwnerOnly kinds can only be applied with an owner-role token.
+	OwnerOnly bool
 	// Attributes returns the spec attributes. They sit at the top level of
 	// the resource beside name, labels and annotations.
 	Attributes func() map[string]schema.Attribute
