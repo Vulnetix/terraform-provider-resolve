@@ -57,6 +57,7 @@ The provider authenticates with a config management token (`vmt_...`), sent as `
 | [`vulnetix_aws_connection`](resources/aws_connection) | AwsConnection, one per tenant |
 | [`vulnetix_campaign`](resources/campaign) | Campaign |
 | [`vulnetix_cloud_sensors`](resources/cloud_sensors) | CloudSensors |
+| [`vulnetix_compliance_target`](resources/compliance_target) | ComplianceTarget |
 | [`vulnetix_crew`](resources/crew) | Crew |
 | [`vulnetix_detection_rule_feed`](resources/detection_rule_feed) | DetectionRuleFeed |
 | [`vulnetix_detection_rule`](resources/detection_rule) | DetectionRule |

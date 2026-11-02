@@ -95,6 +95,7 @@ func TestAccAwsAccount(t *testing.T)            { testAccKind(t, "AwsAccount") }
 func TestAccAwsConnection(t *testing.T)         { testAccKind(t, "AwsConnection") }
 func TestAccCampaign(t *testing.T)              { testAccKind(t, "Campaign") }
 func TestAccCloudSensors(t *testing.T)          { testAccKind(t, "CloudSensors") }
+func TestAccComplianceTarget(t *testing.T)      { testAccKind(t, "ComplianceTarget") }
 func TestAccCrew(t *testing.T)                  { testAccKind(t, "Crew") }
 func TestAccDetectionRule(t *testing.T)         { testAccKind(t, "DetectionRule") }
 func TestAccDetectionRuleFeed(t *testing.T)     { testAccKind(t, "DetectionRuleFeed") }

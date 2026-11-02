@@ -23,6 +23,7 @@ var served = map[string]bool{
 	"AwsConnection":         true,
 	"Campaign":              true,
 	"CloudSensors":          true,
+	"ComplianceTarget":      true,
 	"Crew":                  true,
 	"DetectionRuleFeed":     true,
 	"DetectionRule":         true,

@@ -213,8 +213,8 @@ github.com/vmihailenco/msgpack/v5 v5.4.1 h1:cQriyiUvjTwOHg8QZaPihLWeRAAVoCpE00IU
 github.com/vmihailenco/msgpack/v5 v5.4.1/go.mod h1:GaZTsDaehaPpQVyxrf5mtQlH+pc21PIudVV/E3rRQok=
 github.com/vmihailenco/tagparser/v2 v2.0.0 h1:y09buUbR+b5aycVFQs/g70pqKVZNBmxwAhO7/IwNM9g=
 github.com/vmihailenco/tagparser/v2 v2.0.0/go.mod h1:Wri+At7QHww0WTrCBeu4J6bNtoV6mEfg5OIWRZA9qds=
-github.com/vulnetix/config-schemas v1.10.0 h1:9FeBF+D7jNbI0A46fSL1LK4o0hlCroF0WSbX3fs8Wxc=
-github.com/vulnetix/config-schemas v1.10.0/go.mod h1:ZzpFRYhOvxtd9a4fEFEujdAr73Z7NoOvhDb8/NggBxo=
+github.com/vulnetix/config-schemas v1.11.1 h1:4C+Is+hWl5ZPioTRsIUnQ+0g0SGsQ/pJ6ublkCIxWKE=
+github.com/vulnetix/config-schemas v1.11.1/go.mod h1:ZzpFRYhOvxtd9a4fEFEujdAr73Z7NoOvhDb8/NggBxo=
 github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM=
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
