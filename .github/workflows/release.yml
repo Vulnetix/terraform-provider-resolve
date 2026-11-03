@@ -50,6 +50,10 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      # The workspace is owned by the runner user, not the container's root, so
+      # git (and so goreleaser and go's VCS stamping) refuses it as dubious.
+      - name: Trust the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
