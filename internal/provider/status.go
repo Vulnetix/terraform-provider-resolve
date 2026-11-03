@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/vulnetix/terraform-provider-vulnetix/internal/client"
+	"github.com/vulnetix/terraform-provider-resolve/internal/client"
 )
 
 // Every resource has a computed status block: what the server says about the

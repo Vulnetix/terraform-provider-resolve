@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/vulnetix/terraform-provider-vulnetix/internal/client"
+	"github.com/vulnetix/terraform-provider-resolve/internal/client"
 )
 
 // vulnetix_ai_models reads the AI firewall model catalogue

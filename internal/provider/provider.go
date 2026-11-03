@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/vulnetix/terraform-provider-vulnetix/internal/client"
+	"github.com/vulnetix/terraform-provider-resolve/internal/client"
 )
 
 // Environment variables the provider reads when an argument is not set.
@@ -90,7 +90,7 @@ func (p *vulnetixProvider) Configure(ctx context.Context, req provider.Configure
 		Endpoint:  endpoint,
 		Token:     token,
 		Manager:   manager,
-		UserAgent: "terraform-provider-vulnetix/" + p.version,
+		UserAgent: "terraform-provider-resolve/" + p.version,
 	})
 	resp.ResourceData = c
 	resp.DataSourceData = c

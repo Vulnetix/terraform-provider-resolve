@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
-	"github.com/vulnetix/terraform-provider-vulnetix/internal/client"
+	"github.com/vulnetix/terraform-provider-resolve/internal/client"
 )
 
 // The data source examples are written by hand: unlike the resources, no

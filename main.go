@@ -1,4 +1,4 @@
-// Command terraform-provider-vulnetix is the vulnetix provider for Terraform
+// Command terraform-provider-resolve is the vulnetix provider for Terraform
 // and OpenTofu.
 package main
 
@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 
-	"github.com/vulnetix/terraform-provider-vulnetix/internal/provider"
+	"github.com/vulnetix/terraform-provider-resolve/internal/provider"
 )
 
 // Generate the resources from the config kind schemas, then the docs from

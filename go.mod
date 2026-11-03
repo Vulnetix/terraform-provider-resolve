@@ -1,4 +1,4 @@
-module github.com/vulnetix/terraform-provider-vulnetix
+module github.com/vulnetix/terraform-provider-resolve
 
 go 1.25.8
 
