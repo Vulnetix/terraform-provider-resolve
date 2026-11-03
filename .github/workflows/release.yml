@@ -26,10 +26,11 @@ jobs:
     # The x64 pool is Amazon Linux 2023 with no apt or sudo, and its image has
     # no gpg or gpgconf, which crazy-max/ghaction-import-gpg needs. Docker is
     # there, so run the job in a Debian image that carries GnuPG (gpg, gpgconf,
-    # gpg-agent), pinned by the digest of the multi-arch index. The local
-    # podman pool answers the same label, so this runs on either.
+    # gpg-agent) and unzip (setup-terraform), pinned by the digest of the
+    # multi-arch index. The local podman pool answers the same label, so this
+    # runs on either.
     container:
-      image: golang:1.25-bookworm@sha256:3b4a11519ad929d1e1d261a12cff056f0c85b735253d7d861346b9c6f8b36437
+      image: buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6a9d6c2cc76438fae2c0988
     timeout-minutes: 30
     steps:
       # Big Go builds overflow the runner's small /tmp; build in the job's temp.
