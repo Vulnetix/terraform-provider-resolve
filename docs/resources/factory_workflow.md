@@ -219,7 +219,7 @@ resource "vulnetix_factory_workflow" "security_patch_train" {
 - `display_name` (String) The name the console shows. Left out, the workflow is shown under its metadata.name.
 - `enabled` (Boolean) Whether the factory starts runs of the workflow. Switching a workflow off also switches off its event triggers; a run already going is left to finish. A workflow that has never been published cannot be switched on. Schema default: `true`.
 - `labels` (Map of String) Free key/value labels (`metadata.labels`). Stored with the object, never interpreted by the server.
-- `publish` (Boolean) true: the graph is the workflow's published version, and new runs use it; a changed graph is saved as the next version and published, which needs a graph that passes the full publish checks (a trigger, every step reachable, no cycle, every decision outcome routed). false: the graph is kept as the workflow's draft and runs keep using the last published version. Apply refuses to publish over a draft someone left unpublished in the console unless the draft already holds this graph. Schema default: `true`.
+- `publish` (Boolean) true, or left out: the graph is the workflow's published version, and new runs use it; a changed graph is saved as the next version and published, which needs a graph that passes the full publish checks (a trigger, every step reachable, no cycle, every decision outcome routed, and every step but config-apply configured, not left with an empty config). false: the graph is kept as the workflow's draft and runs keep using the last published version. Apply refuses to publish over a draft someone left unpublished in the console unless the draft already holds this graph. A draft may hold steps that are not configured yet (config: {}). Schema default: `true`.
 
 ### Read-Only
 
@@ -244,7 +244,6 @@ Optional:
 
 Required:
 
-- `config` (String) The step's settings, which depend on its type; every type has at least one, such as a trigger's kind or a gate's profile. They are the settings the workflow builder edits, under the same names; the server checks them with the builder's own rules, so a step the builder would refuse is refused here too. A trigger step's config is the same as a FactoryTrigger or FactorySchedule spec, with the type under kind (kind: cron for a schedule, with cron, tz and runsOn). A JSON-encoded value; use jsonencode().
 - `id` (String) The step's id, unique in the graph: 1 to 40 letters, digits, dashes or underscores. Edges name steps by it.
 - `title` (String) The step's title in the builder and the run view. Publishing needs a title that is not empty on every step.
 - `type` (String) What the step does. trigger: what starts a run. scan: run scanners or read their results. decision: ask a model a question and route on the answer. crew: hand the work to a Belai crew or agent. gate: hold the run to CI checks, the quality gate and the release jail, and ask a person to approve a config-apply plan. human: ask a person to approve. output: open a pull request, comment, publish to TEA, notify or write VEX. state: read or write a stored object. config-apply: plan, or apply an approved plan of, the Platform IaC documents in the repository's .vulnetix/config/ directory at the pushed commit (config: phase plan or apply, and prune). One of `trigger`, `scan`, `decision`, `crew`, `gate`, `human`, `output`, `state`, `config-apply`.
@@ -252,6 +251,7 @@ Required:
 Optional:
 
 - `budget` (Attributes) The step's token budget. (see [below for nested schema](#nestedatt--graph--nodes--budget))
+- `config` (String) The step's settings, which depend on its type. A published workflow needs at least one on every step except config-apply, such as a trigger's kind or a gate's profile; a draft (publish: false) may leave them empty (config: {}), and so may a config-apply step, whose settings all have defaults. They are the settings the workflow builder edits, under the same names; the server checks them with the builder's own rules, so a step the builder would refuse is refused here too. A trigger step's config is the same as a FactoryTrigger or FactorySchedule spec, with the type under kind (kind: cron for a schedule, with cron, tz and runsOn). A JSON-encoded value; use jsonencode().
 - `github_calls` (Attributes) The step's GitHub API call limit. (see [below for nested schema](#nestedatt--graph--nodes--github_calls))
 - `on_quota_low` (String) What the step does when the GitHub quota is low: carry on with cached data, wait for the quota window, or ask a person. One of `use_cached`, `defer`, `escalate`.
 - `position` (Attributes) Where the builder draws the step. It has no effect on runs. (see [below for nested schema](#nestedatt--graph--nodes--position))
