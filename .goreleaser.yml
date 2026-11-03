@@ -1,11 +1,16 @@
 # Release layout the Terraform and OpenTofu registries require:
-#   terraform-provider-vulnetix_<version>_<os>_<arch>.zip
-#   terraform-provider-vulnetix_<version>_manifest.json   (protocol versions)
-#   terraform-provider-vulnetix_<version>_SHA256SUMS
-#   terraform-provider-vulnetix_<version>_SHA256SUMS.sig  (detached GPG, binary)
+#   terraform-provider-resolve_<version>_<os>_<arch>.zip
+#   terraform-provider-resolve_<version>_manifest.json   (protocol versions)
+#   terraform-provider-resolve_<version>_SHA256SUMS
+#   terraform-provider-resolve_<version>_SHA256SUMS.sig  (detached GPG, binary)
 # The registry checks the .sig against the public key added to the namespace,
 # so the signing key must be the one registered there.
 version: 2
+
+# The registries name archives terraform-provider-{type}_..., and the type in
+# the address vulnetix/resolve is "resolve". Resources keep the vulnetix_
+# prefix, which comes from the provider's local name, not from this address.
+project_name: terraform-provider-resolve
 
 before:
   hooks:

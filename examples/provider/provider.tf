@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     vulnetix = {
-      source = "vulnetix/vulnetix"
+      source = "vulnetix/resolve"
     }
   }
 }

@@ -18,7 +18,7 @@ Terraform 1.11 or later, or OpenTofu 1.11 or later: the provider uses write-only
 terraform {
   required_providers {
     vulnetix = {
-      source = "vulnetix/vulnetix"
+      source = "vulnetix/resolve"
     }
   }
 }
@@ -31,7 +31,7 @@ provider "vulnetix" {
 }
 ```
 
-Run `terraform init` (or `tofu init`). OpenTofu reads the same `vulnetix/vulnetix` source from its own registry; nothing else changes.
+Run `terraform init` (or `tofu init`). OpenTofu reads the same `vulnetix/resolve` source from its own registry; nothing else changes.
 
 ## Authentication
 

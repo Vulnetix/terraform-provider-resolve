@@ -1,6 +1,6 @@
 # terraform-provider-vulnetix
 
-The `vulnetix/vulnetix` provider for Terraform and OpenTofu. Each resource is one `vulnetix.com/v1` config document, applied through the same server-side engine as `vulnetix config apply` and the console's Download as code. Resources are generated from the kind schemas in [config-schemas](https://github.com/Vulnetix/config-schemas).
+The `vulnetix/resolve` provider for Terraform and OpenTofu. Each resource is one `vulnetix.com/v1` config document, applied through the same server-side engine as `vulnetix config apply` and the console's Download as code. Resources are generated from the kind schemas in [config-schemas](https://github.com/Vulnetix/config-schemas).
 
 Reference docs for every resource and data source are in [docs/](docs/), and are what the Terraform and OpenTofu registries publish.
 
@@ -12,7 +12,7 @@ Terraform 1.11 or later, or OpenTofu 1.11 or later (secrets use write-only argum
 terraform {
   required_providers {
     vulnetix = {
-      source = "vulnetix/vulnetix"
+      source = "vulnetix/resolve"
     }
   }
 }
@@ -25,7 +25,16 @@ resource "vulnetix_quality_gate" "default" {
 }
 ```
 
-Then `terraform init && terraform apply`, or `tofu init && tofu apply`. OpenTofu resolves the same `vulnetix/vulnetix` source from its own registry.
+Then `terraform init && terraform apply`, or `tofu init && tofu apply`. OpenTofu resolves the same `vulnetix/resolve` source from its own registry.
+
+## Publishing to the registries
+
+The registry address is `vulnetix/resolve` (namespace `vulnetix`, type `resolve`), while resources keep the `vulnetix_` prefix from the local name `vulnetix` in `required_providers`. Both the Terraform Registry and the OpenTofu registry require the GitHub repository to be named `terraform-provider-{type}`, so for this address the repository must be named `terraform-provider-resolve`. This repository is still `Vulnetix/terraform-provider-vulnetix`, so before the first release the owner must:
+
+1. Rename the repository on GitHub to `Vulnetix/terraform-provider-resolve`, then update the Go module path in `go.mod` and the imports of `github.com/vulnetix/terraform-provider-vulnetix/...`, `repo` in the `justfile`, and any repository-scoped Actions secrets.
+2. Add the signing key to the `vulnetix` namespace on registry.terraform.io, and submit `vulnetix/resolve` to the OpenTofu registry.
+
+`.goreleaser.yml` already produces `terraform-provider-resolve_<version>_<os>_<arch>.zip`, `_manifest.json`, `_SHA256SUMS` and the detached `_SHA256SUMS.sig` that the registries require.
 
 ## Authentication
 

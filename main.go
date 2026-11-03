@@ -29,7 +29,7 @@ func main() {
 	err := providerserver.Serve(context.Background(), provider.New(version), providerserver.ServeOpts{
 		// The registry address, which is also the source users write in
 		// required_providers.
-		Address: "registry.terraform.io/vulnetix/vulnetix",
+		Address: "registry.terraform.io/vulnetix/resolve",
 		Debug:   debug,
 	})
 	if err != nil {
