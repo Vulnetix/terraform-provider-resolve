@@ -23,6 +23,13 @@ concurrency:
 jobs:
   release:
     runs-on: [self-hosted, Linux, X64, vulnetix-local]
+    # The x64 pool is Amazon Linux 2023 with no apt or sudo, and its image has
+    # no gpg or gpgconf, which crazy-max/ghaction-import-gpg needs. Docker is
+    # there, so run the job in a Debian image that carries GnuPG (gpg, gpgconf,
+    # gpg-agent), pinned by the digest of the multi-arch index. The local
+    # podman pool answers the same label, so this runs on either.
+    container:
+      image: golang:1.25-bookworm@sha256:3b4a11519ad929d1e1d261a12cff056f0c85b735253d7d861346b9c6f8b36437
     timeout-minutes: 30
     steps:
       # Big Go builds overflow the runner's small /tmp; build in the job's temp.
@@ -52,7 +59,7 @@ jobs:
         run: go test ./...
       - name: Import the signing key
         id: gpg
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
