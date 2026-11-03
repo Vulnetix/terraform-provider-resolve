@@ -17,3 +17,9 @@ resource "vulnetix_member" "bob" {
   email = "bob@acme.com"
   role  = "member"
 }
+
+resource "vulnetix_member" "carol" {
+  name  = "carol"
+  email = "carol@acme.com"
+  role  = "developer"
+}
