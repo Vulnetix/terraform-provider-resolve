@@ -5,3 +5,7 @@ dist/
 .terraform.lock.hcl
 terraform-provider-vulnetix
 terraform-provider-vulnetix_*
+
+# Local signing key passphrase and fingerprint (just gpg-key)
+.env
+.env.*
