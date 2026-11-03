@@ -228,13 +228,13 @@ Repository secrets the workflow needs:
 | `GPG_PRIVATE_KEY` | ASCII-armoured GPG private key (`gpg --armor --export-secret-keys <id>`). RSA or DSA; the Terraform registry does not accept ECC keys. |
 | `PASSPHRASE` | That key's passphrase. |
 
-The `justfile` does this without prompts. The key ID and passphrase are kept in the gitignored `.env.production` (mode 600):
+The `justfile` does this without prompts. The private key, passphrase and fingerprint live in Bitwarden (`signing/TF_PROVIDER_GPG_*`, read with `vx-secrets` from `Vulnetix/ops`); recipes handle keys in a temporary `GNUPGHOME`, so no keyring or local file holds them:
 
 | Recipe | What it does |
 |--------|--------------|
-| `just gpg-key` | Creates an RSA 4096 signing key with a random passphrase (non-interactive `gpg --batch`) and writes `GPG_FINGERPRINT` and `PASSPHRASE` to `.env.production`. |
-| `just secrets` | Sets the `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets with `gh secret set`, piping the values so they never appear in argv or the terminal. |
-| `just public-key` | Prints the armoured public key, for the registry signing-key settings. |
+| `just gpg-key` | Creates an RSA 4096 signing key with a random passphrase (non-interactive `gpg --batch`) and stores the key, passphrase and fingerprint in Bitwarden. Does nothing if one is stored. |
+| `just secrets` | Sets the `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets from Bitwarden (`vx-secrets to-gh`); values go over stdin, never argv or the terminal. |
+| `just public-key` | Prints the armoured public key, for the registry signing-key settings, after checking the stored key matches the stored fingerprint. |
 | `just release X.Y.Z` | Tags `origin/main` as `vX.Y.Z` and pushes the tag, which starts the release workflow. |
 
 Before the first release:
