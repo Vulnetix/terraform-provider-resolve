@@ -40,14 +40,15 @@ Every argument the kind supports. A secret is a write-only `*_wo` argument fed f
 # Every argument the kind supports. From config-schemas examples/RuntimeSensorPolicy/advanced.yaml.
 
 resource "vulnetix_runtime_sensor_policy" "engineering_laptops" {
-  name            = "engineering-laptops"
-  allow_user_stop = false
-  credential_mode = "device-key"
-  description     = "Every engineer's laptop, in guard mode, plus the security team by address."
-  dns_listen      = "127.0.0.1:5353"
-  egress_listen   = "127.0.0.1:8181"
-  enabled         = true
-  feed_key        = "KymtMlKOJvj2IkhUbMpXRl/JBmmOwu/LIj8BekwmQXk="
+  name               = "engineering-laptops"
+  allow_major_update = true
+  allow_user_stop    = false
+  credential_mode    = "device-key"
+  description        = "Every engineer's laptop, in guard mode, plus the security team by address."
+  dns_listen         = "127.0.0.1:5353"
+  egress_listen      = "127.0.0.1:8181"
+  enabled            = true
+  feed_key           = "KymtMlKOJvj2IkhUbMpXRl/JBmmOwu/LIj8BekwmQXk="
   feeds = jsonencode([{
     feedRef = "edge-waf"
     }, "https://vulnetix.com/feeds/0b6f2c1e-4d3a-4e5f-8a9b-7c6d5e4f3a2b/9c8b7a6f-5e4d-4c3b-8a2f-1e0d9c8b7a6f", {
@@ -100,6 +101,7 @@ resource "vulnetix_runtime_sensor_policy" "servers_locked" {
 
 ### Optional
 
+- `allow_major_update` (Boolean) Let enrolled sensors take a release with a higher major version. Off by default: a major release can change the profile format, the units and the protocol, so a sensor stays on its major version until the profile says otherwise. Has no effect when autoUpdate is false. Schema default: `false`.
 - `allow_user_stop` (Boolean) Let the device's user stop the sensor. Schema default: `false`.
 - `annotations` (Map of String) Free key/value notes for people and tools (`metadata.annotations`), such as a ticket link.
 - `auto_update` (Boolean) Let enrolled sensors install new CLI releases themselves. The guard checks the latest release about every 6 hours, verifies its checksum, keeps the previous binary as .prev and restarts onto the new one. false holds a sensor on its installed version, for hosts that take releases on a change window. Schema default: `true`.

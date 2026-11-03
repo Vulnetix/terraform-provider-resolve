@@ -1,14 +1,15 @@
 # Every argument the kind supports. From config-schemas examples/RuntimeSensorPolicy/advanced.yaml.
 
 resource "vulnetix_runtime_sensor_policy" "engineering_laptops" {
-  name            = "engineering-laptops"
-  allow_user_stop = false
-  credential_mode = "device-key"
-  description     = "Every engineer's laptop, in guard mode, plus the security team by address."
-  dns_listen      = "127.0.0.1:5353"
-  egress_listen   = "127.0.0.1:8181"
-  enabled         = true
-  feed_key        = "KymtMlKOJvj2IkhUbMpXRl/JBmmOwu/LIj8BekwmQXk="
+  name               = "engineering-laptops"
+  allow_major_update = true
+  allow_user_stop    = false
+  credential_mode    = "device-key"
+  description        = "Every engineer's laptop, in guard mode, plus the security team by address."
+  dns_listen         = "127.0.0.1:5353"
+  egress_listen      = "127.0.0.1:8181"
+  enabled            = true
+  feed_key           = "KymtMlKOJvj2IkhUbMpXRl/JBmmOwu/LIj8BekwmQXk="
   feeds = jsonencode([{
     feedRef = "edge-waf"
     }, "https://vulnetix.com/feeds/0b6f2c1e-4d3a-4e5f-8a9b-7c6d5e4f3a2b/9c8b7a6f-5e4d-4c3b-8a2f-1e0d9c8b7a6f", {

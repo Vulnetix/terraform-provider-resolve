@@ -116,7 +116,7 @@ resource "vulnetix_package_firewall_policy" "default" {
 - `name` (String) The object's name. PackageFirewallPolicy is one per tenant, so it is always `default`.
 - `review` (Attributes) When the console flags a curation decision for review. Read by the console only, never by the proxy. (see [below for nested schema](#nestedatt--review))
 - `thresholds` (Attributes) Block a version with a vulnerability scoring at or above a threshold. 0 turns that threshold off. (see [below for nested schema](#nestedatt--thresholds))
-- `version_lag` (Number) Block a version more than this many releases behind its package's newest release (rank 0 is the newest, so 2 serves the three newest). 0 turns it off. Enforced only for ecosystems whose proxy can list every version, and not in warn mode. Note that this is the opposite of the QualityGate versionLag check. Schema default: `0`.
+- `version_lag` (Number) Block a version more than this many releases behind its package's newest servable release (rank 0 is the newest, so 2 serves the three newest). Versions already blocked, and on npm versions still inside the cooldown, are not counted, so lag and cooldown together never remove every version. 0 turns it off. Enforced only for ecosystems whose proxy can list every version, and not in warn mode. Note that this is the opposite of the QualityGate versionLag check. Schema default: `0`.
 
 ### Read-Only
 
