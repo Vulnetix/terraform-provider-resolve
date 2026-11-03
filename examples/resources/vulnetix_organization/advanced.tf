@@ -3,6 +3,7 @@
 resource "vulnetix_organization" "default" {
   company_email_domains = ["acme.com", "acme.co.uk"]
   display_name          = "Acme Corporation"
+  drift_protection      = true
   labels = {
     team = "platform"
   }

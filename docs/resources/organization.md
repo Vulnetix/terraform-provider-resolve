@@ -2,7 +2,7 @@
 page_title: "vulnetix_organization Resource - vulnetix"
 subcategory: ""
 description: |-
-  The organisation's own settings: its display name and its company email domains. One per tenant, named default. A field left out is left as it is. Applying needs an owner or admin. Deleting the document only stops managing these settings: the organisation itself is never deleted, and the settings keep their values.
+  The organisation's own settings: its display name, its company email domains and whether Drift protection is on. One per tenant, named default. A field left out is left as it is. Applying needs an owner or admin. Deleting the document only stops managing these settings: the organisation itself is never deleted, and the settings keep their values.
   Organization decides who can act for the tenant, so it can only be applied with a token that has the owner role and lists Organization among its kinds.
   Manages the Organization config kind through /config/objects/Organization/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
   Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as Organization). Some kinds wait on a person after they are applied (an invited Member, a Slack connection): status.phase says so, and Terraform does not wait.
@@ -10,7 +10,7 @@ description: |-
 
 # vulnetix_organization (Resource)
 
-The organisation's own settings: its display name and its company email domains. One per tenant, named default. A field left out is left as it is. Applying needs an owner or admin. Deleting the document only stops managing these settings: the organisation itself is never deleted, and the settings keep their values.
+The organisation's own settings: its display name, its company email domains and whether Drift protection is on. One per tenant, named default. A field left out is left as it is. Applying needs an owner or admin. Deleting the document only stops managing these settings: the organisation itself is never deleted, and the settings keep their values.
 
 Organization decides who can act for the tenant, so it can only be applied with a token that has the owner role and lists `Organization` among its kinds.
 
@@ -41,6 +41,7 @@ Every argument the kind supports. A secret is a write-only `*_wo` argument fed f
 resource "vulnetix_organization" "default" {
   company_email_domains = ["acme.com", "acme.co.uk"]
   display_name          = "Acme Corporation"
+  drift_protection      = true
   labels = {
     team = "platform"
   }
@@ -58,6 +59,7 @@ resource "vulnetix_organization" "default" {
 - `annotations` (Map of String) Free key/value notes for people and tools (`metadata.annotations`), such as a ticket link.
 - `company_email_domains` (Set of String) The organisation's own email domains, such as acme.com. The Contributors page classes a contributor whose commit email is at one of these domains as internal, and everyone else as external. An empty list clears them, which means not configured: no contributor is classed either way.
 - `display_name` (String) The organisation's name as people see it, such as Acme Corporation. It is kept on the organisation's identity group, where it was set from the company name, or the email domain, when the organisation was created.
+- `drift_protection` (Boolean) Whether the console and the legacy APIs refuse changes to settings that are managed by Platform IaC. false is advisory only: the console shows which settings are managed as code and still lets an owner or admin change them. true enforces it: a write from the console, an ApiKey or a legacy endpoint to a kind that has an object managed by Terraform or GitOps is refused with HTTP 409 managed_by_platform_iac. Writes from Platform IaC (the config API with a management token) are never refused, and neither is this setting, so an owner or admin can always turn it off. Schema default: `false`.
 - `labels` (Map of String) Free key/value labels (`metadata.labels`). Stored with the object, never interpreted by the server.
 - `name` (String) The object's name. Organization is one per tenant, so it is always `default`.
 
