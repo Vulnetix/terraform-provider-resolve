@@ -75,6 +75,7 @@ resource "vulnetix_runtime_sensor_policy" "engineering_laptops" {
 
 resource "vulnetix_runtime_sensor_policy" "servers_locked" {
   name            = "servers-locked"
+  auto_update     = false
   credential_mode = "org-key"
   description     = "Production servers enrolled by MDM, blocking every match on a block-mode rule."
   feeds = jsonencode([{
@@ -101,6 +102,7 @@ resource "vulnetix_runtime_sensor_policy" "servers_locked" {
 
 - `allow_user_stop` (Boolean) Let the device's user stop the sensor. Schema default: `false`.
 - `annotations` (Map of String) Free key/value notes for people and tools (`metadata.annotations`), such as a ticket link.
+- `auto_update` (Boolean) Let enrolled sensors install new CLI releases themselves. The guard checks the latest release about every 6 hours, verifies its checksum, keeps the previous binary as .prev and restarts onto the new one. false holds a sensor on its installed version, for hosts that take releases on a change window. Schema default: `true`.
 - `credential_mode` (String) The credential an enrolled device gets. device-key: a key that works on the sensor routes only, of which the server keeps a hash. user-key: the enrolling person's. org-key: the organization's. One of `device-key`, `user-key`, `org-key`. Schema default: `device-key`.
 - `description` (String)
 - `dns_listen` (String) Where the DNS guard listens.
@@ -111,7 +113,7 @@ resource "vulnetix_runtime_sensor_policy" "servers_locked" {
 - `forward` (Set of String) siem: send every DNS and egress decision to Guardian as dns_events and net_events rows.
 - `heartbeat_alert_minutes` (Number) Alert when an enrolled sensor has been silent this long. Schema default: `15`.
 - `hold` (String) How long guard mode holds a match, as a Go duration from 1s to 24h. Schema default: `15m`.
-- `inventory_every` (String) How often the sensor reports the packages running processes load, as a Go duration from 1m to 168h. Schema default: `6h`.
+- `inventory_every` (String) How often the sensor reports the packages on its host, installed and loaded by a running process, as a Go duration from 1m to 168h. Schema default: `6h`.
 - `labels` (Map of String) Free key/value labels (`metadata.labels`). Stored with the object, never interpreted by the server.
 - `match` (Attributes) Who enrolls with this profile: a person by exact email or email domain (* for everyone), or a device an MDM integration enrolls. (see [below for nested schema](#nestedatt--match))
 - `mode` (String) monitor: report matches, block nothing. guard: hold a match on a rule safe to block (a request denied, an exec refused, a connection dropped) until a person confirms a block or marks a false positive, or the hold lapses; an action that cannot be undone is never held. enforce: block every match on a block-mode rule, a running process included. In every mode a rule from a feed whose signature does not verify only detects. One of `monitor`, `guard`, `enforce`. Schema default: `monitor`.

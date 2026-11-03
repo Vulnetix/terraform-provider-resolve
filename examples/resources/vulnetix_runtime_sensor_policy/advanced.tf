@@ -36,6 +36,7 @@ resource "vulnetix_runtime_sensor_policy" "engineering_laptops" {
 
 resource "vulnetix_runtime_sensor_policy" "servers_locked" {
   name            = "servers-locked"
+  auto_update     = false
   credential_mode = "org-key"
   description     = "Production servers enrolled by MDM, blocking every match on a block-mode rule."
   feeds = jsonencode([{
