@@ -20,11 +20,22 @@ Run `terraform init` (or `tofu init`). OpenTofu reads the same `vulnetix/resolve
 
 ## Authentication
 
-The provider authenticates with a config management token (`vmt_...`), sent as `Authorization: Bearer`. A token acts as a service account of the tenant and carries a role and the kinds it may change:
+The provider uses the credentials the Vulnetix CLI and API already accept; there is no separate Terraform token. Configure exactly one of:
 
-- An owner or admin, signed in, issues one with `POST /v1/config/tokens` (`name`, `principalUuid` of a service account, `role`, `kinds`, `expiresInDays`). The token is in that answer only; rotate it with `POST /v1/config/tokens/{uuid}/rotate` and revoke it with `DELETE /v1/config/tokens/{uuid}`.
-- Applying needs the `owner` or `admin` role and the kinds the configuration manages.
-- Pass it as `VULNETIX_CONFIG_TOKEN`, from your CI secret store, rather than in the configuration.
+- **An ApiKey** (recommended): `api_key` with `org_id`, or `VULNETIX_API_KEY` with `VULNETIX_ORG_ID`. Sent as `Authorization: ApiKey <org_id>:<api_key>`. A key that already starts with `<org_id>:` is not prefixed twice.
+- **A bearer token**: `token`, or `VULNETIX_API_TOKEN`. An Authentik OAuth2 access token (for example from a client-credentials grant) or a Vulnetix session JWT, sent as `Authorization: Bearer <token>`. It names its own organisation, so there is no `org_id`.
+
+Setting both an ApiKey and a bearer token is an error. With neither, the provider warns and every request is refused.
+
+The principal must be an **owner or admin** of the organisation. The recommended automation credential is the ApiKey of a **service account created with the admin or owner role**; a service account is a member unless it is given a role, and a member is refused with HTTP 403 on apply. A person's ApiKey, or a session from `vulnetix auth login`, works the same way when that person is an owner or admin. Keep the credential out of the configuration: pass it from your CI secret store as the environment variables above, or as sensitive variables.
+
+An advanced configuration, with the ApiKey as variables and every provider argument:
+
+{{ tffile "examples/provider/advanced.tf" }}
+
+A bearer token instead of the ApiKey:
+
+{{ tffile "examples/provider/bearer.tf" }}
 
 `VULNETIX_ENDPOINT` points the provider at another API base URL, such as a staging tenant's.
 

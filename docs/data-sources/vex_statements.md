@@ -3,12 +3,12 @@
 page_title: "vulnetix_vex_statements Data Source - vulnetix"
 subcategory: ""
 description: |-
-  Every VEX statement the tenant holds, newest first (GET /vex/statements), across all its documents and in every status, including under_investigation and affected. Statements come from triage, from suppressions and from vulnetix_vex_source imports. A vmt_ token needs the VexSource or Suppression kind.
+  Every VEX statement the tenant holds, newest first (GET /vex/statements), across all its documents and in every status, including under_investigation and affected. Statements come from triage, from suppressions and from vulnetix_vex_source imports.
 ---
 
 # vulnetix_vex_statements (Data Source)
 
-Every VEX statement the tenant holds, newest first (`GET /vex/statements`), across all its documents and in every status, including `under_investigation` and `affected`. Statements come from triage, from suppressions and from `vulnetix_vex_source` imports. A `vmt_` token needs the `VexSource` or `Suppression` kind.
+Every VEX statement the tenant holds, newest first (`GET /vex/statements`), across all its documents and in every status, including `under_investigation` and `affected`. Statements come from triage, from suppressions and from `vulnetix_vex_source` imports.
 
 ## Example Usage
 

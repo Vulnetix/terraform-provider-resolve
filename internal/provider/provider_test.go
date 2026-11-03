@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
 
@@ -55,6 +56,54 @@ func TestReadmeAndIndexListEverything(t *testing.T) {
 		for _, n := range names {
 			if !strings.Contains(string(b), "`"+n+"`") {
 				t.Errorf("%s does not list %s", file, n)
+			}
+		}
+	}
+}
+
+// The credential rules: an ApiKey with its organisation, or a bearer token,
+// never both; none is a warning, not an error.
+func TestCheckCredentials(t *testing.T) {
+	for name, tc := range map[string]struct {
+		apiKey, orgID, token string
+		errors, warnings     int
+	}{
+		"api key and org":    {apiKey: "k", orgID: "o"},
+		"bearer token":       {token: "t"},
+		"bearer with org id": {token: "t", orgID: "o"},
+		"api key and token":  {apiKey: "k", orgID: "o", token: "t", errors: 1},
+		"api key only":       {apiKey: "k", errors: 1},
+		"api key with token": {apiKey: "k", token: "t", errors: 1},
+		"org id only":        {orgID: "o", errors: 1},
+		"nothing configured": {warnings: 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			d := checkCredentials(tc.apiKey, tc.orgID, tc.token)
+			if d.ErrorsCount() != tc.errors || d.WarningsCount() != tc.warnings {
+				t.Errorf("%d errors and %d warnings, want %d and %d: %v", d.ErrorsCount(), d.WarningsCount(), tc.errors, tc.warnings, d)
+			}
+		})
+	}
+}
+
+// The credential arguments say who may use them.
+func TestCredentialDescriptions(t *testing.T) {
+	var resp provider.SchemaResponse
+	(&vulnetixProvider{}).Schema(context.Background(), provider.SchemaRequest{}, &resp)
+	for _, name := range []string{"api_key", "org_id", "token"} {
+		if resp.Schema.Attributes[name] == nil {
+			t.Fatalf("no %s argument", name)
+		}
+	}
+	for _, name := range []string{"api_key", "token"} {
+		a := resp.Schema.Attributes[name]
+		if !a.IsSensitive() {
+			t.Errorf("%s is not sensitive", name)
+		}
+		d := a.GetMarkdownDescription()
+		for _, want := range []string{"owner or admin", "service account", "member", "403"} {
+			if !strings.Contains(d, want) {
+				t.Errorf("%s description does not mention %q: %s", name, want, d)
 			}
 		}
 	}

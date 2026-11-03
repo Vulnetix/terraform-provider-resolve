@@ -3,7 +3,7 @@ page_title: "vulnetix_organization Resource - vulnetix"
 subcategory: ""
 description: |-
   The organisation's own settings: its display name, its company email domains and whether Drift protection is on. One per tenant, named default. A field left out is left as it is. Applying needs an owner or admin. Deleting the document only stops managing these settings: the organisation itself is never deleted, and the settings keep their values.
-  Organization decides who can act for the tenant, so it can only be applied with a token that has the owner role and lists Organization among its kinds.
+  Organization decides who can act for the tenant, so it can only be applied by an owner or admin of the organisation, and a role above the caller's own cannot be granted. A member is refused with HTTP 403.
   Manages the Organization config kind through /config/objects/Organization/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
   Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as Organization). Some kinds wait on a person after they are applied (an invited Member, a Slack connection): status.phase says so, and Terraform does not wait.
 ---
@@ -12,7 +12,7 @@ description: |-
 
 The organisation's own settings: its display name, its company email domains and whether Drift protection is on. One per tenant, named default. A field left out is left as it is. Applying needs an owner or admin. Deleting the document only stops managing these settings: the organisation itself is never deleted, and the settings keep their values.
 
-Organization decides who can act for the tenant, so it can only be applied with a token that has the owner role and lists `Organization` among its kinds.
+Organization decides who can act for the tenant, so it can only be applied by an owner or admin of the organisation, and a role above the caller's own cannot be granted. A member is refused with HTTP 403.
 
 Manages the `Organization` config kind through `/config/objects/Organization/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 

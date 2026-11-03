@@ -20,10 +20,14 @@ import (
 // fakeAPI is an in-memory config API with the engine's behaviour where it
 // matters to the provider: PUT merges into the stored spec, the stored
 // object can carry fields nobody sent (the row's column defaults), and
-// unknown tokens are refused.
+// unknown credentials are refused.
+//
+// It accepts the two credential forms the provider sends: an organisation
+// ApiKey ("ApiKey org-test:key-test") and a bearer token ("Bearer
+// bearer-test"). Each has a member twin that authenticates but holds the
+// member role, which the config engine refuses to change policy.
 type fakeAPI struct {
-	t     *testing.T
-	token string
+	t *testing.T
 
 	mu       sync.Mutex
 	objects  map[string]client.Document // kind/name
@@ -38,13 +42,36 @@ type fakeAPI struct {
 	repos    []client.GitHubRepo
 	// phases is each object's phase as the last apply left it.
 	phases map[string]string
-	// forbidden kinds answer 403, as an owner-only kind does to a token without the owner role.
+	// forbidden kinds answer 403, as an owner-only kind does to a caller whose role is too low.
 	forbidden map[string]bool
+	// lastAuth is the Authorization header of the last authenticated request.
+	lastAuth string
+}
+
+// The credentials the fake accepts.
+const (
+	fakeOrg         = "org-test"
+	fakeAPIKey      = "key-test"
+	fakeMemberKey   = "key-member"
+	fakeBearer      = "bearer-test"
+	fakeMemberToken = "bearer-member"
+)
+
+// roleOf is the role behind an Authorization header, or "" when it is not a
+// credential the fake knows.
+func (f *fakeAPI) roleOf(auth string) string {
+	switch auth {
+	case "ApiKey " + fakeOrg + ":" + fakeAPIKey, "Bearer " + fakeBearer:
+		return "admin"
+	case "ApiKey " + fakeOrg + ":" + fakeMemberKey, "Bearer " + fakeMemberToken:
+		return "member"
+	}
+	return ""
 }
 
 func newFakeAPI(t *testing.T) (*fakeAPI, *httptest.Server) {
 	f := &fakeAPI{
-		t: t, token: "vmt_test",
+		t:         t,
 		objects:   map[string]client.Document{},
 		defaults:  map[string]map[string]any{},
 		entries:   map[string][]client.FeedEntry{},
@@ -59,11 +86,17 @@ func newFakeAPI(t *testing.T) (*fakeAPI, *httptest.Server) {
 func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if r.Header.Get("Authorization") != "Bearer "+f.token {
+	role := f.roleOf(r.Header.Get("Authorization"))
+	if role == "" {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not authenticated"})
 		return
 	}
+	f.lastAuth = r.Header.Get("Authorization")
 	p := strings.TrimPrefix(r.URL.Path, "/v1")
+	if strings.HasPrefix(p, "/config/objects/") && role == "member" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "only an owner or admin can change the configuration"})
+		return
+	}
 	switch {
 	case p == "/config/kinds" && r.Method == http.MethodGet:
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -103,7 +136,7 @@ func (f *fakeAPI) object(w http.ResponseWriter, r *http.Request, key string) {
 	switch r.Method {
 	case http.MethodGet:
 		if f.forbidden[strings.SplitN(key, "/", 2)[0]] {
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "only an owner token may apply this kind"})
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "only an owner can apply this kind"})
 			return
 		}
 		d, ok := f.objects[key]
@@ -114,7 +147,7 @@ func (f *fakeAPI) object(w http.ResponseWriter, r *http.Request, key string) {
 		writeJSON(w, http.StatusOK, map[string]any{"document": redacted(d), "status": map[string]any{"phase": f.phaseOf(key), "manager": "terraform"}})
 	case http.MethodPut:
 		if f.forbidden[strings.SplitN(key, "/", 2)[0]] {
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "only an owner token may apply this kind"})
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "only an owner can apply this kind"})
 			return
 		}
 		var body struct {
@@ -219,11 +252,23 @@ func testFactories() map[string]func() (tfprotov6.ProviderServer, error) {
 	}
 }
 
+// providerBlock authenticates with the fake's admin ApiKey.
 func providerBlock(url string) string {
 	return `
 provider "vulnetix" {
   endpoint = "` + url + `/v1"
-  token    = "vmt_test"
+  api_key  = "` + fakeAPIKey + `"
+  org_id   = "` + fakeOrg + `"
+}
+`
+}
+
+// providerBlockBearer authenticates with the fake's admin bearer token.
+func providerBlockBearer(url string) string {
+	return `
+provider "vulnetix" {
+  endpoint = "` + url + `/v1"
+  token    = "` + fakeBearer + `"
 }
 `
 }

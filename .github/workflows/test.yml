@@ -40,8 +40,9 @@ jobs:
 
   # The acceptance suite (TestAcc*) against a real test tenant, under both
   # Terraform and OpenTofu. It needs the repository secrets
-  # VULNETIX_ENDPOINT and VULNETIX_CONFIG_TOKEN (an owner or admin vmt_
-  # token for every served kind) and is skipped without them. The two tools
+  # VULNETIX_ENDPOINT, VULNETIX_API_KEY and VULNETIX_ORG_ID (the ApiKey of an
+  # admin or owner service account, which can apply every served kind) and is
+  # skipped without them. The two tools
   # share the tenant, so they run one after the other.
   acceptance:
     if: github.event_name != 'pull_request'
@@ -58,15 +59,16 @@ jobs:
         tool: [terraform, opentofu]
     env:
       VULNETIX_ENDPOINT: ${{ secrets.VULNETIX_ENDPOINT }}
-      VULNETIX_CONFIG_TOKEN: ${{ secrets.VULNETIX_CONFIG_TOKEN }}
+      VULNETIX_API_KEY: ${{ secrets.VULNETIX_API_KEY }}
+      VULNETIX_ORG_ID: ${{ secrets.VULNETIX_ORG_ID }}
     steps:
       - name: Check for the acceptance secrets
         id: secrets
         run: |
-          if [ -n "$VULNETIX_ENDPOINT" ] && [ -n "$VULNETIX_CONFIG_TOKEN" ]; then
+          if [ -n "$VULNETIX_ENDPOINT" ] && [ -n "$VULNETIX_API_KEY" ] && [ -n "$VULNETIX_ORG_ID" ]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::VULNETIX_ENDPOINT or VULNETIX_CONFIG_TOKEN is not set; skipping the acceptance suite."
+            echo "::notice::VULNETIX_ENDPOINT, VULNETIX_API_KEY or VULNETIX_ORG_ID is not set; skipping the acceptance suite."
             echo "ok=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Use the job temp dir for Go

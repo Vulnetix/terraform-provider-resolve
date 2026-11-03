@@ -39,9 +39,6 @@ const DefaultEndpoint = "https://www.vulnetix.com/api/site/v1"
 // server's ownership table, so a GitOps apply with --prune never deletes them.
 const DefaultManager = "terraform"
 
-// TokenPrefix marks a config management token.
-const TokenPrefix = "vmt_"
-
 // APIVersion is the document format every kind uses today.
 const APIVersion = "vulnetix.com/v1"
 
@@ -55,6 +52,8 @@ var ErrNotFound = errors.New("not found")
 type Client struct {
 	endpoint  string
 	token     string
+	apiKey    string
+	orgID     string
 	manager   string
 	userAgent string
 	http      *http.Client
@@ -62,8 +61,16 @@ type Client struct {
 
 // Options configure New.
 type Options struct {
-	Endpoint  string
-	Token     string
+	Endpoint string
+	// Token is a bearer token: an Authentik OAuth2 access token or a
+	// session JWT. It is sent as "Authorization: Bearer <token>" and wins
+	// over APIKey when both are set.
+	Token string
+	// APIKey and OrgID are an organisation ApiKey, sent as
+	// "Authorization: ApiKey <org>:<key>". APIKey may already carry the
+	// "<org>:" prefix.
+	APIKey    string
+	OrgID     string
 	Manager   string
 	UserAgent string
 	HTTP      *http.Client
@@ -74,6 +81,8 @@ func New(o Options) *Client {
 	c := &Client{
 		endpoint:  strings.TrimRight(o.Endpoint, "/"),
 		token:     o.Token,
+		apiKey:    o.APIKey,
+		orgID:     o.OrgID,
 		manager:   o.Manager,
 		userAgent: o.UserAgent,
 		http:      o.HTTP,
@@ -199,13 +208,19 @@ func (e *APIError) Unwrap() error {
 	return nil
 }
 
-// authorization is the Authorization header for the configured token: a
-// config management token (vmt_...) or a session JWT, both bearer tokens.
+// authorization is the Authorization header for the configured credential:
+// "Bearer <token>" for an Authentik access token or a session JWT, or
+// "ApiKey <org>:<key>" for an organisation ApiKey, the format the Vulnetix CLI
+// sends. A key that already starts with "<org>:" is not prefixed twice.
 func (c *Client) authorization() string {
-	if c.token == "" {
+	switch {
+	case c.token != "":
+		return "Bearer " + c.token
+	case c.apiKey != "" && c.orgID != "":
+		return "ApiKey " + c.orgID + ":" + strings.TrimPrefix(c.apiKey, c.orgID+":")
+	default:
 		return ""
 	}
-	return "Bearer " + c.token
 }
 
 // request sends one request and returns the body of a 2xx answer.
@@ -658,7 +673,7 @@ type VexStatementFilter struct {
 }
 
 // ListVexStatements reads the tenant's VEX statements, newest first, from
-// GET /vex/statements. A vmt_ token needs the VexSource or Suppression kind.
+// GET /vex/statements.
 func (c *Client) ListVexStatements(ctx context.Context, f VexStatementFilter) ([]VexStatement, error) {
 	q := url.Values{}
 	for k, v := range map[string]string{"status": f.Status, "vulnerabilityId": f.VulnerabilityID,
@@ -703,8 +718,7 @@ type GitHubRepoFilter struct {
 
 // ListGitHubInstallationRepos reads every repository the tenant's active
 // GitHub App installations reach, ordered by full name, from GET
-// /integrations/github/installations/repos. A vmt_ token needs the
-// github-installations scope.
+// /integrations/github/installations/repos.
 func (c *Client) ListGitHubInstallationRepos(ctx context.Context, f GitHubRepoFilter) ([]GitHubRepo, error) {
 	q := url.Values{}
 	if f.InstallationID > 0 {

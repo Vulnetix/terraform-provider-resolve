@@ -150,9 +150,51 @@ func TestOwnerOnlyForbidden(t *testing.T) {
 		ProtoV6ProviderFactories: testFactories(),
 		Steps: []resource.TestStep{{
 			Config:      providerBlock(srv.URL) + ex.hcl,
-			ExpectError: regexp.MustCompile(`(?s)HTTP\s+403.*can\s+only\s+be\s+applied\s+with\s+a\s+token\s+that\s+has\s+the\s+owner\s+role`),
+			ExpectError: regexp.MustCompile(`(?s)HTTP\s+403.*can\s+only\s+be\s+applied\s+by\s+an\s+owner\s+or\s+admin`),
 		}},
 	})
+}
+
+// A member's credential is refused with 403 on apply, and the error says the
+// principal must be an owner or admin. It holds for an ApiKey and a bearer token.
+func TestMemberIsForbidden(t *testing.T) {
+	for name, block := range map[string]func(url string) string{
+		"apikey": func(url string) string {
+			return `
+provider "vulnetix" {
+  endpoint = "` + url + `/v1"
+  api_key  = "` + fakeMemberKey + `"
+  org_id   = "` + fakeOrg + `"
+}
+`
+		},
+		"bearer": func(url string) string {
+			return `
+provider "vulnetix" {
+  endpoint = "` + url + `/v1"
+  token    = "` + fakeMemberToken + `"
+}
+`
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f, srv := newFakeAPI(t)
+			resource.UnitTest(t, resource.TestCase{
+				ProtoV6ProviderFactories: testFactories(),
+				Steps: []resource.TestStep{{
+					Config: block(srv.URL) + `
+resource "vulnetix_quality_gate" "gate" {
+  severity = "high"
+}
+`,
+					ExpectError: regexp.MustCompile(`HTTP\s+403`),
+				}},
+			})
+			if len(f.objects) != 0 {
+				t.Errorf("a member wrote %d objects", len(f.objects))
+			}
+		})
+	}
 }
 
 func mustKind(t *testing.T, kind string) kindSpec {
@@ -166,8 +208,7 @@ func mustKind(t *testing.T, kind string) kindSpec {
 	return kindSpec{}
 }
 
-// Only the four kinds that decide who can act for the tenant are owner-only,
-// as vdb-site's ownerTokenKinds.
+// Only the four kinds that decide who can act for the tenant are owner-only.
 func TestOwnerOnlyKinds(t *testing.T) {
 	want := map[string]bool{"Organization": true, "Member": true, "ServiceAccount": true, "VaultEntry": true}
 	for _, k := range generatedKinds {

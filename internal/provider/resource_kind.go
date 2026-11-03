@@ -120,7 +120,7 @@ func (r *kindResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 			" objects. Reference those resources' attributes, or add `depends_on`, so Terraform applies them first."
 	}
 	if r.spec.OwnerOnly {
-		deps += "\n\n" + r.spec.Kind + " decides who can act for the tenant, so it can only be applied with a token that has the owner role and lists `" + r.spec.Kind + "` among its kinds."
+		deps += "\n\n" + r.spec.Kind + " decides who can act for the tenant, so it can only be applied by an owner or admin of the organisation, and a role above the caller's own cannot be granted. A member is refused with HTTP 403."
 	}
 	resp.Schema = schema.Schema{
 		MarkdownDescription: r.spec.Description + deps + "\n\nManages the `" + r.spec.Kind + "` config kind through `/config/objects/" + r.spec.Kind + "/{name}`. " +

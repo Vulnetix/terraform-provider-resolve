@@ -19,20 +19,62 @@ import (
 // singletons such as the QualityGate. Point them at a test tenant only.
 //
 //	TF_ACC=1 VULNETIX_ENDPOINT=https://www.vulnetix.com/api/site/v1 \
-//	VULNETIX_CONFIG_TOKEN=vmt_... go test ./internal/provider -run TestAcc
+//	VULNETIX_API_KEY=... VULNETIX_ORG_ID=... go test ./internal/provider -run TestAcc
 //
-// The token needs the owner or admin role and every served kind. Run the
-// same suite under OpenTofu with TF_ACC_TERRAFORM_PATH=$(which tofu) and
+// or, with a bearer token (an Authentik access token) instead of the ApiKey,
+// VULNETIX_API_TOKEN=... The principal needs the owner or admin role: use the
+// ApiKey of an admin or owner service account. Run the same suite under
+// OpenTofu with TF_ACC_TERRAFORM_PATH=$(which tofu) and
 // TF_ACC_PROVIDER_NAMESPACE=vulnetix.
 //
 // resource.Test skips them without TF_ACC; accPreCheck skips them without
 // the server settings, so TF_ACC alone never aims them at production.
 
+// accMissing is what keeps an acceptance run from starting: the endpoint, and
+// either VULNETIX_API_KEY with VULNETIX_ORG_ID or VULNETIX_API_TOKEN.
+func accMissing(getenv func(string) string) string {
+	if getenv(EnvEndpoint) == "" {
+		return EnvEndpoint
+	}
+	if getenv(EnvToken) != "" {
+		return ""
+	}
+	for _, env := range []string{EnvAPIKey, EnvOrgID} {
+		if getenv(env) == "" {
+			return env + " (with " + EnvAPIKey + " and " + EnvOrgID + ") or " + EnvToken
+		}
+	}
+	return ""
+}
+
 func accPreCheck(t *testing.T) {
 	t.Helper()
-	for _, env := range []string{EnvToken, EnvEndpoint} {
-		if os.Getenv(env) == "" {
-			t.Skipf("%s is not set", env)
+	if m := accMissing(os.Getenv); m != "" {
+		t.Skipf("%s is not set", m)
+	}
+}
+
+func TestAccGate(t *testing.T) {
+	env := func(kv ...string) func(string) string {
+		m := map[string]string{}
+		for i := 0; i < len(kv); i += 2 {
+			m[kv[i]] = kv[i+1]
+		}
+		return func(k string) string { return m[k] }
+	}
+	for name, tc := range map[string]struct {
+		env     func(string) string
+		missing bool
+	}{
+		"api key, org and endpoint": {env(EnvEndpoint, "e", EnvAPIKey, "k", EnvOrgID, "o"), false},
+		"bearer token and endpoint": {env(EnvEndpoint, "e", EnvToken, "t"), false},
+		"no endpoint":               {env(EnvAPIKey, "k", EnvOrgID, "o"), true},
+		"api key without org":       {env(EnvEndpoint, "e", EnvAPIKey, "k"), true},
+		"org without api key":       {env(EnvEndpoint, "e", EnvOrgID, "o"), true},
+		"no credential":             {env(EnvEndpoint, "e"), true},
+	} {
+		if got := accMissing(tc.env) != ""; got != tc.missing {
+			t.Errorf("%s: skipped = %v, want %v", name, got, tc.missing)
 		}
 	}
 }

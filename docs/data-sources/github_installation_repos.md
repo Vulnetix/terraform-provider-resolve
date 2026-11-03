@@ -3,12 +3,12 @@
 page_title: "vulnetix_github_installation_repos Data Source - vulnetix"
 subcategory: ""
 description: |-
-  The repositories the tenant's active GitHub App installations reach (GET /integrations/github/installations/repos), ordered by full name. It reads Vulnetix's cache, which GitHub webhooks keep current, so a plan never calls GitHub. Use full_names to scope a vulnetix_vex_source or a vulnetix_jail_policy to every repository the App can see. A vmt_ token needs the github-installations scope.
+  The repositories the tenant's active GitHub App installations reach (GET /integrations/github/installations/repos), ordered by full name. It reads Vulnetix's cache, which GitHub webhooks keep current, so a plan never calls GitHub. Use full_names to scope a vulnetix_vex_source or a vulnetix_jail_policy to every repository the App can see.
 ---
 
 # vulnetix_github_installation_repos (Data Source)
 
-The repositories the tenant's active GitHub App installations reach (`GET /integrations/github/installations/repos`), ordered by full name. It reads Vulnetix's cache, which GitHub webhooks keep current, so a plan never calls GitHub. Use `full_names` to scope a `vulnetix_vex_source` or a `vulnetix_jail_policy` to every repository the App can see. A `vmt_` token needs the `github-installations` scope.
+The repositories the tenant's active GitHub App installations reach (`GET /integrations/github/installations/repos`), ordered by full name. It reads Vulnetix's cache, which GitHub webhooks keep current, so a plan never calls GitHub. Use `full_names` to scope a `vulnetix_vex_source` or a `vulnetix_jail_policy` to every repository the App can see.
 
 ## Example Usage
 

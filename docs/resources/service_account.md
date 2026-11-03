@@ -3,7 +3,7 @@ page_title: "vulnetix_service_account Resource - vulnetix"
 subcategory: ""
 description: |-
   A credential for CI that is not a person. It is named after the organisation, as :<metadata.name>, has no email address and cannot sign in. It always holds the member role, so it cannot invite people or mint further credentials. Applying a new ServiceAccount creates it and returns its API key and secret once, in the apply result's status (status.apiKey and status.secret): they are never shown again, by plan, export or the console, so store them as the apply returns them. Applying needs an owner or admin. Deleting the document deactivates the service account, so its key stops working; it is kept for the audit trail, and its name cannot be used again.
-  ServiceAccount decides who can act for the tenant, so it can only be applied with a token that has the owner role and lists ServiceAccount among its kinds.
+  ServiceAccount decides who can act for the tenant, so it can only be applied by an owner or admin of the organisation, and a role above the caller's own cannot be granted. A member is refused with HTTP 403.
   Manages the ServiceAccount config kind through /config/objects/ServiceAccount/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
   Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as Organization). Some kinds wait on a person after they are applied (an invited Member, a Slack connection): status.phase says so, and Terraform does not wait.
 ---
@@ -12,7 +12,7 @@ description: |-
 
 A credential for CI that is not a person. It is named after the organisation, as <organisation>:<metadata.name>, has no email address and cannot sign in. It always holds the member role, so it cannot invite people or mint further credentials. Applying a new ServiceAccount creates it and returns its API key and secret once, in the apply result's status (status.apiKey and status.secret): they are never shown again, by plan, export or the console, so store them as the apply returns them. Applying needs an owner or admin. Deleting the document deactivates the service account, so its key stops working; it is kept for the audit trail, and its name cannot be used again.
 
-ServiceAccount decides who can act for the tenant, so it can only be applied with a token that has the owner role and lists `ServiceAccount` among its kinds.
+ServiceAccount decides who can act for the tenant, so it can only be applied by an owner or admin of the organisation, and a role above the caller's own cannot be granted. A member is refused with HTTP 403.
 
 Manages the `ServiceAccount` config kind through `/config/objects/ServiceAccount/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 

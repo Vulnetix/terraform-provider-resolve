@@ -12,13 +12,48 @@ import (
 )
 
 func TestAuthorizationHeader(t *testing.T) {
-	for token, want := range map[string]string{
-		"vmt_abc":        "Bearer vmt_abc",
-		"eyJhbGciOi.jwt": "Bearer eyJhbGciOi.jwt",
-		"":               "",
+	for name, tc := range map[string]struct {
+		opts Options
+		want string
+	}{
+		"authentik access token": {Options{Token: "eyJhbGciOi.access.token"}, "Bearer eyJhbGciOi.access.token"},
+		"session jwt":            {Options{Token: "eyJhbGciOi.jwt"}, "Bearer eyJhbGciOi.jwt"},
+		"api key":                {Options{APIKey: "abc123", OrgID: "org-1"}, "ApiKey org-1:abc123"},
+		// The CLI normalises a key that already carries the org prefix.
+		"api key with org prefix":  {Options{APIKey: "org-1:abc123", OrgID: "org-1"}, "ApiKey org-1:abc123"},
+		"api key with another org": {Options{APIKey: "org-2:abc123", OrgID: "org-1"}, "ApiKey org-1:org-2:abc123"},
+		"api key without org":      {Options{APIKey: "abc123"}, ""},
+		"org without api key":      {Options{OrgID: "org-1"}, ""},
+		"token wins over api key":  {Options{Token: "t", APIKey: "k", OrgID: "o"}, "Bearer t"},
+		"nothing":                  {Options{}, ""},
 	} {
-		if got := New(Options{Token: token}).authorization(); got != want {
-			t.Errorf("token %q: Authorization = %q, want %q", token, got, want)
+		t.Run(name, func(t *testing.T) {
+			if got := New(tc.opts).authorization(); got != tc.want {
+				t.Errorf("Authorization = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// The header reaches the wire, and a client with no credential sends none.
+func TestAuthorizationIsSent(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("Authorization")
+		io.WriteString(w, `{}`)
+	}))
+	defer srv.Close()
+	for want, o := range map[string]Options{
+		"ApiKey org-1:abc": {APIKey: "abc", OrgID: "org-1"},
+		"Bearer tok":       {Token: "tok"},
+		"":                 {},
+	} {
+		o.Endpoint = srv.URL
+		if _, err := New(o).request(context.Background(), http.MethodGet, "/config/kinds", nil, nil, "application/json"); err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Errorf("sent %q, want %q", got, want)
 		}
 	}
 }
@@ -50,7 +85,7 @@ func TestObjectRoundTrip(t *testing.T) {
 		}
 	}))
 	defer srv.Close()
-	c := New(Options{Endpoint: srv.URL, Token: "vmt_x", Manager: "terraform"})
+	c := New(Options{Endpoint: srv.URL, APIKey: "k", OrgID: "o", Manager: "terraform"})
 	ctx := context.Background()
 
 	o, err := c.GetObject(ctx, "QualityGate", "default")

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -16,9 +17,17 @@ import (
 
 // Environment variables the provider reads when an argument is not set.
 const (
-	EnvToken    = "VULNETIX_CONFIG_TOKEN"
+	EnvAPIKey   = "VULNETIX_API_KEY"
+	EnvOrgID    = "VULNETIX_ORG_ID"
+	EnvToken    = "VULNETIX_API_TOKEN"
 	EnvEndpoint = "VULNETIX_ENDPOINT"
 )
+
+// roleNote is appended to every credential argument: what the principal must
+// be, and what happens when it is not.
+const roleNote = "The principal must be an owner or admin of the organisation: a service account " +
+	"created with the admin or owner role is the recommended automation credential, and its ApiKey " +
+	"the recommended way to authenticate. A member is refused with HTTP 403 on apply."
 
 var _ provider.Provider = (*vulnetixProvider)(nil)
 
@@ -38,6 +47,8 @@ func New(version string) func() provider.Provider {
 
 type providerModel struct {
 	Endpoint types.String `tfsdk:"endpoint"`
+	APIKey   types.String `tfsdk:"api_key"`
+	OrgID    types.String `tfsdk:"org_id"`
 	Token    types.String `tfsdk:"token"`
 	Manager  types.String `tfsdk:"manager"`
 }
@@ -58,9 +69,21 @@ func (p *vulnetixProvider) Schema(_ context.Context, _ provider.SchemaRequest, r
 				MarkdownDescription: "The Vulnetix API base URL. Defaults to `$" + EnvEndpoint + "`, then `" + client.DefaultEndpoint + "`.",
 				Optional:            true,
 			},
+			"api_key": schema.StringAttribute{
+				MarkdownDescription: "The organisation ApiKey, sent as `Authorization: ApiKey <org_id>:<api_key>`. " +
+					"Use it with `org_id`. Defaults to `$" + EnvAPIKey + "`. Set either `api_key` and `org_id`, or `token`, not both. " + roleNote,
+				Optional:  true,
+				Sensitive: true,
+			},
+			"org_id": schema.StringAttribute{
+				MarkdownDescription: "The organisation UUID the `api_key` belongs to. Defaults to `$" + EnvOrgID + "`. " +
+					"Required with `api_key`; not needed with `token`, which already names its organisation.",
+				Optional: true,
+			},
 			"token": schema.StringAttribute{
-				MarkdownDescription: "A config management token (`vmt_...`). Defaults to `$" + EnvToken + "`. " +
-					"Applying needs a token with the owner or admin role.",
+				MarkdownDescription: "A bearer token, sent as `Authorization: Bearer <token>`: an Authentik OAuth2 " +
+					"access token (for example from a client-credentials grant) or a Vulnetix session JWT. " +
+					"Defaults to `$" + EnvToken + "`. Set either `token`, or `api_key` and `org_id`, not both. " + roleNote,
 				Optional:  true,
 				Sensitive: true,
 			},
@@ -80,20 +103,48 @@ func (p *vulnetixProvider) Configure(ctx context.Context, req provider.Configure
 		return
 	}
 	endpoint := firstSet(m.Endpoint, os.Getenv(EnvEndpoint))
-	token := firstSet(m.Token, os.Getenv(EnvToken))
 	manager := firstSet(m.Manager, "")
-	if token == "" {
-		resp.Diagnostics.AddWarning("No Vulnetix token",
-			"Set the provider's token argument or "+EnvToken+" to a config management token. Every request will be refused without one.")
+	apiKey := firstSet(m.APIKey, os.Getenv(EnvAPIKey))
+	orgID := firstSet(m.OrgID, os.Getenv(EnvOrgID))
+	token := firstSet(m.Token, os.Getenv(EnvToken))
+	resp.Diagnostics.Append(checkCredentials(apiKey, orgID, token)...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 	c := client.New(client.Options{
 		Endpoint:  endpoint,
+		APIKey:    apiKey,
+		OrgID:     orgID,
 		Token:     token,
 		Manager:   manager,
 		UserAgent: "terraform-provider-resolve/" + p.version,
 	})
 	resp.ResourceData = c
 	resp.DataSourceData = c
+}
+
+// checkCredentials validates the resolved credentials: either api_key with
+// org_id, or token, never both, and a warning when there is none.
+func checkCredentials(apiKey, orgID, token string) diag.Diagnostics {
+	var d diag.Diagnostics
+	switch {
+	case apiKey != "" && token != "":
+		d.AddError("Two Vulnetix credentials",
+			"Both an ApiKey (api_key / "+EnvAPIKey+") and a bearer token (token / "+EnvToken+") are set. "+
+				"Configure one: api_key with org_id, or token.")
+	case apiKey != "" && orgID == "":
+		d.AddError("api_key needs org_id",
+			"An ApiKey is sent as \"ApiKey <org>:<key>\". Set org_id or "+EnvOrgID+" to the organisation the key belongs to.")
+	case apiKey == "" && token == "" && orgID != "":
+		d.AddError("org_id needs api_key",
+			"org_id is set without an api_key. Set api_key or "+EnvAPIKey+", or use token or "+EnvToken+" instead.")
+	case apiKey == "" && token == "":
+		d.AddWarning("No Vulnetix credentials",
+			"Set api_key and org_id ("+EnvAPIKey+" and "+EnvOrgID+"), or token ("+EnvToken+"). "+
+				"Every request will be refused without one. The principal must be an owner or admin; "+
+				"an admin or owner service account's ApiKey is the recommended automation credential.")
+	}
+	return d
 }
 
 // firstSet is the argument when it is set, else fallback. An unknown value

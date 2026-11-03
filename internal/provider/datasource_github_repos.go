@@ -50,8 +50,7 @@ func (d *githubReposDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 		MarkdownDescription: "The repositories the tenant's active GitHub App installations reach " +
 			"(`GET /integrations/github/installations/repos`), ordered by full name. It reads Vulnetix's cache, which " +
 			"GitHub webhooks keep current, so a plan never calls GitHub. Use `full_names` to scope a " +
-			"`vulnetix_vex_source` or a `vulnetix_jail_policy` to every repository the App can see. A `vmt_` token " +
-			"needs the `github-installations` scope.",
+			"`vulnetix_vex_source` or a `vulnetix_jail_policy` to every repository the App can see.",
 		Attributes: map[string]schema.Attribute{
 			"installation_id": schema.Int64Attribute{
 				Optional:            true,

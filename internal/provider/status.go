@@ -178,8 +178,9 @@ func ownerHint(spec kindSpec, err error) string {
 		return ""
 	}
 	if ae.Status == 403 || ae.Code == "forbidden" || ae.Code == "kind_not_allowed" {
-		return "\n\n" + spec.Kind + " decides who can act for the tenant, so it can only be applied with a token that has the owner role " +
-			"and lists " + spec.Kind + " among its kinds."
+		return "\n\n" + spec.Kind + " decides who can act for the tenant, so it can only be applied by an owner or admin of the organisation, " +
+			"and a role above the caller's own cannot be granted. Authenticate with the ApiKey of an admin or owner service account, " +
+			"or with a bearer token for an owner or admin."
 	}
 	return ""
 }

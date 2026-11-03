@@ -23,23 +23,76 @@ terraform {
   }
 }
 
-# The token is read from VULNETIX_CONFIG_TOKEN when not set here. Keep it out
-# of the configuration: pass it from your CI secret store.
-provider "vulnetix" {
-  # endpoint = "https://www.vulnetix.com/api/site/v1"
-  # manager  = "terraform"
-}
+# Minimal. The ApiKey of an admin or owner service account is read from
+# VULNETIX_API_KEY and VULNETIX_ORG_ID, so nothing secret is in the
+# configuration. Pass both from your CI secret store.
+provider "vulnetix" {}
 ```
 
 Run `terraform init` (or `tofu init`). OpenTofu reads the same `vulnetix/resolve` source from its own registry; nothing else changes.
 
 ## Authentication
 
-The provider authenticates with a config management token (`vmt_...`), sent as `Authorization: Bearer`. A token acts as a service account of the tenant and carries a role and the kinds it may change:
+The provider uses the credentials the Vulnetix CLI and API already accept; there is no separate Terraform token. Configure exactly one of:
 
-- An owner or admin, signed in, issues one with `POST /v1/config/tokens` (`name`, `principalUuid` of a service account, `role`, `kinds`, `expiresInDays`). The token is in that answer only; rotate it with `POST /v1/config/tokens/{uuid}/rotate` and revoke it with `DELETE /v1/config/tokens/{uuid}`.
-- Applying needs the `owner` or `admin` role and the kinds the configuration manages.
-- Pass it as `VULNETIX_CONFIG_TOKEN`, from your CI secret store, rather than in the configuration.
+- **An ApiKey** (recommended): `api_key` with `org_id`, or `VULNETIX_API_KEY` with `VULNETIX_ORG_ID`. Sent as `Authorization: ApiKey <org_id>:<api_key>`. A key that already starts with `<org_id>:` is not prefixed twice.
+- **A bearer token**: `token`, or `VULNETIX_API_TOKEN`. An Authentik OAuth2 access token (for example from a client-credentials grant) or a Vulnetix session JWT, sent as `Authorization: Bearer <token>`. It names its own organisation, so there is no `org_id`.
+
+Setting both an ApiKey and a bearer token is an error. With neither, the provider warns and every request is refused.
+
+The principal must be an **owner or admin** of the organisation. The recommended automation credential is the ApiKey of a **service account created with the admin or owner role**; a service account is a member unless it is given a role, and a member is refused with HTTP 403 on apply. A person's ApiKey, or a session from `vulnetix auth login`, works the same way when that person is an owner or admin. Keep the credential out of the configuration: pass it from your CI secret store as the environment variables above, or as sensitive variables.
+
+An advanced configuration, with the ApiKey as variables and every provider argument:
+
+```terraform
+variable "vulnetix_org_id" {
+  type        = string
+  description = "The organisation UUID the ApiKey belongs to."
+}
+
+variable "vulnetix_api_key" {
+  type        = string
+  sensitive   = true
+  description = "The ApiKey of an admin or owner service account."
+}
+
+# Advanced: every argument, with the ApiKey passed as variables. Set them with
+# TF_VAR_vulnetix_org_id and TF_VAR_vulnetix_api_key, or leave api_key and
+# org_id out and set VULNETIX_API_KEY and VULNETIX_ORG_ID instead.
+provider "vulnetix" {
+  # The console API. Defaults to $VULNETIX_ENDPOINT, then
+  # https://www.vulnetix.com/api/site/v1.
+  endpoint = "https://www.vulnetix.com/api/site/v1"
+
+  # Sent as "Authorization: ApiKey <org_id>:<api_key>". The principal must be
+  # an owner or admin; a member is refused with HTTP 403 on apply.
+  org_id  = var.vulnetix_org_id
+  api_key = var.vulnetix_api_key
+
+  # Recorded as the owner of every object this provider applies, so
+  # "vulnetix config apply --prune" leaves them alone.
+  manager = "terraform"
+}
+```
+
+A bearer token instead of the ApiKey:
+
+```terraform
+variable "vulnetix_token" {
+  type        = string
+  sensitive   = true
+  description = "An Authentik OAuth2 access token or a Vulnetix session JWT, for an owner or admin."
+}
+
+# Bearer alternative to the ApiKey: an Authentik access token, for example
+# from a client-credentials grant, sent as "Authorization: Bearer <token>".
+# It names its own organisation, so there is no org_id. Set either token or
+# api_key with org_id, never both. Leave it out and set VULNETIX_API_TOKEN to
+# keep it out of the configuration.
+provider "vulnetix" {
+  token = var.vulnetix_token
+}
+```
 
 `VULNETIX_ENDPOINT` points the provider at another API base URL, such as a staging tenant's.
 
@@ -130,6 +183,8 @@ terraform import vulnetix_quality_gate.default default
 
 ### Optional
 
+- `api_key` (String, Sensitive) The organisation ApiKey, sent as `Authorization: ApiKey <org_id>:<api_key>`. Use it with `org_id`. Defaults to `$VULNETIX_API_KEY`. Set either `api_key` and `org_id`, or `token`, not both. The principal must be an owner or admin of the organisation: a service account created with the admin or owner role is the recommended automation credential, and its ApiKey the recommended way to authenticate. A member is refused with HTTP 403 on apply.
 - `endpoint` (String) The Vulnetix API base URL. Defaults to `$VULNETIX_ENDPOINT`, then `https://www.vulnetix.com/api/site/v1`.
 - `manager` (String) The manager recorded as the owner of every object this provider applies. A GitOps apply with `--prune` only deletes objects it manages itself. Defaults to `terraform`.
-- `token` (String, Sensitive) A config management token (`vmt_...`). Defaults to `$VULNETIX_CONFIG_TOKEN`. Applying needs a token with the owner or admin role.
+- `org_id` (String) The organisation UUID the `api_key` belongs to. Defaults to `$VULNETIX_ORG_ID`. Required with `api_key`; not needed with `token`, which already names its organisation.
+- `token` (String, Sensitive) A bearer token, sent as `Authorization: Bearer <token>`: an Authentik OAuth2 access token (for example from a client-credentials grant) or a Vulnetix session JWT. Defaults to `$VULNETIX_API_TOKEN`. Set either `token`, or `api_key` and `org_id`, not both. The principal must be an owner or admin of the organisation: a service account created with the admin or owner role is the recommended automation credential, and its ApiKey the recommended way to authenticate. A member is refused with HTTP 403 on apply.

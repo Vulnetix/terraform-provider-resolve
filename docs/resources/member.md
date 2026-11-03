@@ -3,7 +3,7 @@ page_title: "vulnetix_member Resource - vulnetix"
 subcategory: ""
 description: |-
   A person in the organisation, by email address, with their role. Applying a Member for someone who is not yet in the organisation sends them an invitation, the same one the members page sends; the object then reports phase Pending, with the invitation's expiry, until they sign in and accept it. A role change on a member takes effect at once; on a pending invitation it replaces the invitation. Deleting the document revokes an outstanding invitation, or removes the member: their account is deactivated and kept for the audit trail, and they lose access to the organisation. Applying needs an owner or admin. An apply that would leave the organisation without an owner, or remove the person applying, is refused.
-  Member decides who can act for the tenant, so it can only be applied with a token that has the owner role and lists Member among its kinds.
+  Member decides who can act for the tenant, so it can only be applied by an owner or admin of the organisation, and a role above the caller's own cannot be granted. A member is refused with HTTP 403.
   Manages the Member config kind through /config/objects/Member/{name}. Applies are recorded with the provider's manager, so a GitOps vulnetix config apply --prune leaves this object alone.
   Most kinds merge: an argument removed from the configuration is no longer managed, and keeps its last value on the server. A kind that is wholly declared (most of them, such as ApiSpecSource, RiskStrategy and VexSource) is replaced instead: a removed argument goes back to its default. Destroying the resource deletes the object, or lets go of it for a kind the server never deletes (such as Organization). Some kinds wait on a person after they are applied (an invited Member, a Slack connection): status.phase says so, and Terraform does not wait.
 ---
@@ -12,7 +12,7 @@ description: |-
 
 A person in the organisation, by email address, with their role. Applying a Member for someone who is not yet in the organisation sends them an invitation, the same one the members page sends; the object then reports phase Pending, with the invitation's expiry, until they sign in and accept it. A role change on a member takes effect at once; on a pending invitation it replaces the invitation. Deleting the document revokes an outstanding invitation, or removes the member: their account is deactivated and kept for the audit trail, and they lose access to the organisation. Applying needs an owner or admin. An apply that would leave the organisation without an owner, or remove the person applying, is refused.
 
-Member decides who can act for the tenant, so it can only be applied with a token that has the owner role and lists `Member` among its kinds.
+Member decides who can act for the tenant, so it can only be applied by an owner or admin of the organisation, and a role above the caller's own cannot be granted. A member is refused with HTTP 403.
 
 Manages the `Member` config kind through `/config/objects/Member/{name}`. Applies are recorded with the provider's `manager`, so a GitOps `vulnetix config apply --prune` leaves this object alone.
 

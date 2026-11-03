@@ -71,8 +71,7 @@ func (d *vexStatementsDataSource) Schema(_ context.Context, _ datasource.SchemaR
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Every VEX statement the tenant holds, newest first (`GET /vex/statements`), across all its " +
 			"documents and in every status, including `under_investigation` and `affected`. Statements come from triage, " +
-			"from suppressions and from `vulnetix_vex_source` imports. A `vmt_` token needs the `VexSource` or " +
-			"`Suppression` kind.",
+			"from suppressions and from `vulnetix_vex_source` imports.",
 		Attributes: map[string]schema.Attribute{
 			"status": schema.StringAttribute{
 				Optional:            true,

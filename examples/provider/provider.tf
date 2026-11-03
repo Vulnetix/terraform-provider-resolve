@@ -6,9 +6,7 @@ terraform {
   }
 }
 
-# The token is read from VULNETIX_CONFIG_TOKEN when not set here. Keep it out
-# of the configuration: pass it from your CI secret store.
-provider "vulnetix" {
-  # endpoint = "https://www.vulnetix.com/api/site/v1"
-  # manager  = "terraform"
-}
+# Minimal. The ApiKey of an admin or owner service account is read from
+# VULNETIX_API_KEY and VULNETIX_ORG_ID, so nothing secret is in the
+# configuration. Pass both from your CI secret store.
+provider "vulnetix" {}

@@ -310,20 +310,135 @@ resource "vulnetix_widget" "w" {
 }
 
 func TestUnauthorizedIsReported(t *testing.T) {
-	_, srv := newFakeAPI(t)
+	for name, creds := range map[string]string{
+		"wrong api key": `api_key  = "wrong"
+  org_id   = "` + fakeOrg + `"`,
+		"wrong org": `api_key  = "` + fakeAPIKey + `"
+  org_id   = "other-org"`,
+		"wrong bearer": `token    = "wrong"`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, srv := newFakeAPI(t)
+			resource.UnitTest(t, resource.TestCase{
+				ProtoV6ProviderFactories: testFactories(),
+				Steps: []resource.TestStep{{
+					Config: `
+provider "vulnetix" {
+  endpoint = "` + srv.URL + `/v1"
+  ` + creds + `
+}
+resource "vulnetix_quality_gate" "gate" {
+  severity = "high"
+}
+`,
+					ExpectError: regexp.MustCompile(`HTTP 401:\s+not authenticated`),
+				}},
+			})
+		})
+	}
+}
+
+// Both credential forms apply, and the provider sends the header the
+// Vulnetix CLI sends: ApiKey <org>:<key>, or Bearer <token>.
+func TestCredentialForms(t *testing.T) {
+	for name, tc := range map[string]struct {
+		block func(url string) string
+		auth  string
+	}{
+		"api key": {providerBlock, "ApiKey " + fakeOrg + ":" + fakeAPIKey},
+		"api key with the org prefix": {func(url string) string {
+			return `
+provider "vulnetix" {
+  endpoint = "` + url + `/v1"
+  api_key  = "` + fakeOrg + ":" + fakeAPIKey + `"
+  org_id   = "` + fakeOrg + `"
+}
+`
+		}, "ApiKey " + fakeOrg + ":" + fakeAPIKey},
+		"bearer": {providerBlockBearer, "Bearer " + fakeBearer},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f, srv := newFakeAPI(t)
+			resource.UnitTest(t, resource.TestCase{
+				ProtoV6ProviderFactories: testFactories(),
+				Steps: []resource.TestStep{{
+					Config: tc.block(srv.URL) + `
+resource "vulnetix_quality_gate" "gate" {
+  severity = "high"
+}
+`,
+					Check: func(*terraform.State) error {
+						f.mu.Lock()
+						defer f.mu.Unlock()
+						if f.lastAuth != tc.auth {
+							return fmt.Errorf("Authorization = %q, want %q", f.lastAuth, tc.auth)
+						}
+						return nil
+					},
+				}},
+			})
+		})
+	}
+}
+
+// The credentials may come from the environment instead of the configuration.
+func TestCredentialsFromEnvironment(t *testing.T) {
+	f, srv := newFakeAPI(t)
+	t.Setenv(EnvAPIKey, fakeAPIKey)
+	t.Setenv(EnvOrgID, fakeOrg)
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV6ProviderFactories: testFactories(),
 		Steps: []resource.TestStep{{
 			Config: `
 provider "vulnetix" {
   endpoint = "` + srv.URL + `/v1"
-  token    = "vmt_wrong"
 }
 resource "vulnetix_quality_gate" "gate" {
   severity = "high"
 }
 `,
-			ExpectError: regexp.MustCompile(`HTTP 401:\s+not authenticated`),
+			Check: func(*terraform.State) error {
+				f.mu.Lock()
+				defer f.mu.Unlock()
+				if len(f.objects) == 0 {
+					return fmt.Errorf("nothing was applied")
+				}
+				return nil
+			},
 		}},
 	})
+}
+
+// Configuring both an ApiKey and a bearer token, or an ApiKey without its
+// organisation, is an error before any request is made.
+func TestCredentialConflicts(t *testing.T) {
+	for name, tc := range map[string]struct{ creds, want string }{
+		"both": {`api_key = "k"
+  org_id  = "o"
+  token   = "t"`, `Two Vulnetix credentials`},
+		"key without org": {`api_key = "k"`, `api_key needs org_id`},
+		"org without key": {`org_id = "o"`, `org_id needs api_key`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f, srv := newFakeAPI(t)
+			resource.UnitTest(t, resource.TestCase{
+				ProtoV6ProviderFactories: testFactories(),
+				Steps: []resource.TestStep{{
+					Config: `
+provider "vulnetix" {
+  endpoint = "` + srv.URL + `/v1"
+  ` + tc.creds + `
+}
+resource "vulnetix_quality_gate" "gate" {
+  severity = "high"
+}
+`,
+					ExpectError: regexp.MustCompile(tc.want),
+				}},
+			})
+			if f.putCount() != 0 {
+				t.Error("a request was made with conflicting credentials")
+			}
+		})
+	}
 }

@@ -17,7 +17,7 @@ terraform {
   }
 }
 
-provider "vulnetix" {} # token from VULNETIX_CONFIG_TOKEN
+provider "vulnetix" {} # ApiKey from VULNETIX_API_KEY and VULNETIX_ORG_ID
 
 resource "vulnetix_quality_gate" "default" {
   severity      = "high"
@@ -37,11 +37,30 @@ The registry address is `vulnetix/resolve` (namespace `vulnetix`, type `resolve`
 
 | Argument   | Environment variable    | Default                                | Notes |
 |------------|-------------------------|----------------------------------------|-------|
-| `token`    | `VULNETIX_CONFIG_TOKEN` | none                                   | A `vmt_` config management token, sent as `Authorization: Bearer`. Sensitive. |
+| `api_key`  | `VULNETIX_API_KEY`      | none                                   | The organisation ApiKey, sent as `Authorization: ApiKey <org_id>:<api_key>`. Needs `org_id`. Sensitive. |
+| `org_id`   | `VULNETIX_ORG_ID`       | none                                   | The organisation UUID the ApiKey belongs to. |
+| `token`    | `VULNETIX_API_TOKEN`    | none                                   | A bearer token, sent as `Authorization: Bearer`: an Authentik OAuth2 access token or a session JWT. Sensitive. |
 | `endpoint` | `VULNETIX_ENDPOINT`     | `https://www.vulnetix.com/api/site/v1` | The console API. Config routes are under `/config/...`. |
 | `manager`  | none                    | `terraform`                            | Recorded as the owner of each object, so `vulnetix config apply --prune` leaves Terraform's objects alone. |
 
-A `vmt_` token acts as a service account of the tenant with a role and an allow list of kinds. An owner or admin, signed in, issues one with `POST /v1/config/tokens` (`name`, `principalUuid`, `role`, `kinds`, `expiresInDays`); the token is in that answer only. Rotate it with `POST /v1/config/tokens/{uuid}/rotate` and revoke it with `DELETE /v1/config/tokens/{uuid}`. Applying needs the `owner` or `admin` role and every kind the configuration manages.
+These are the credentials the Vulnetix CLI and API already accept. Configure either `api_key` with `org_id`, or `token`; both together is an error, and neither is a warning (every request is refused).
+
+The principal must be an owner or admin of the organisation. The recommended automation credential is the ApiKey of a service account created with the admin or owner role. A member, including a service account that was not given a role, gets HTTP 403 on apply. A person's ApiKey or `vulnetix auth login` session works too when that person is an owner or admin.
+
+```hcl
+provider "vulnetix" {
+  org_id  = var.vulnetix_org_id
+  api_key = var.vulnetix_api_key # sensitive; or set VULNETIX_API_KEY
+}
+```
+
+The bearer alternative, for an Authentik access token:
+
+```hcl
+provider "vulnetix" {
+  token = var.vulnetix_token # sensitive; or set VULNETIX_API_TOKEN
+}
+```
 
 ## Resources
 
@@ -128,7 +147,7 @@ A SIEM kind (SavedSearch, DetectionRule, AlertTrigger, ScheduledReport, LogSourc
 
 ### Owner-only kinds
 
-Organization, Member, ServiceAccount and VaultEntry decide who can act for the tenant. A token can carry them only with the owner role, and the token must list them among its kinds. An apply with any other token fails with a 403 that says so. Organization, Member and ServiceAccount also need an owner or admin to apply them.
+Organization, Member, ServiceAccount and VaultEntry decide who can act for the tenant. Applying them needs an owner or admin of the organisation, and a role above the caller's own cannot be granted. A member's credential fails with a 403 that says so.
 
 ## Data sources
 
@@ -212,10 +231,10 @@ Acceptance tests (`TestAcc<Kind>`, one per served kind) run the same lifecycle a
 
 ```sh
 TF_ACC=1 VULNETIX_ENDPOINT=https://www.vulnetix.com/api/site/v1 \
-VULNETIX_CONFIG_TOKEN=vmt_... go test ./internal/provider -run TestAcc
+VULNETIX_API_KEY=... VULNETIX_ORG_ID=... go test ./internal/provider -run TestAcc
 ```
 
-Under OpenTofu, add `TF_ACC_TERRAFORM_PATH=$(command -v tofu) TF_ACC_PROVIDER_NAMESPACE=vulnetix`. They skip unless `TF_ACC`, `VULNETIX_ENDPOINT` and `VULNETIX_CONFIG_TOKEN` are all set. In CI they run when the repository has the `VULNETIX_ENDPOINT` and `VULNETIX_CONFIG_TOKEN` secrets.
+Use the ApiKey of an admin or owner service account. Under OpenTofu, add `TF_ACC_TERRAFORM_PATH=$(command -v tofu) TF_ACC_PROVIDER_NAMESPACE=vulnetix`. They skip unless `TF_ACC`, `VULNETIX_ENDPOINT` and either `VULNETIX_API_KEY` with `VULNETIX_ORG_ID`, or `VULNETIX_API_TOKEN`, are set. In CI they run when the repository has the `VULNETIX_ENDPOINT`, `VULNETIX_API_KEY` and `VULNETIX_ORG_ID` secrets.
 
 ## Releasing
 

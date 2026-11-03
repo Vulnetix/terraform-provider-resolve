@@ -75,9 +75,8 @@ var served = map[string]bool{
 }
 
 // ownerOnly are the kinds that decide who can act for the tenant: its
-// settings, its people, its machine credentials and its secrets (vdb-site
-// handler/config_tokens.go ownerTokenKinds). A token may carry them only
-// with the owner role.
+// settings, its people, its machine credentials and its secrets. The engine
+// applies them only for a caller with the owner role.
 var ownerOnly = map[string]bool{
 	"Organization": true, "Member": true, "ServiceAccount": true, "VaultEntry": true,
 }
