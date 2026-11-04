@@ -345,3 +345,23 @@ func TestExampleHCLSingletonAlternatives(t *testing.T) {
 		t.Errorf("advanced.tf:\n%s", s)
 	}
 }
+
+// Every sensitive entry must name a string argument in the released schemas,
+// or it marks nothing.
+func TestSensitiveEntriesExist(t *testing.T) {
+	set, err := loadSchemas(configschemas.FS(), "schemas")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &generator{set: set, version: "test"}
+	for _, k := range set.kinds() {
+		if _, err := g.generate(k); err != nil {
+			t.Fatalf("%s: %v", k, err)
+		}
+	}
+	for where := range sensitive {
+		if !g.marked[where] {
+			t.Errorf("sensitive entry %s names no string argument in the released schemas", where)
+		}
+	}
+}

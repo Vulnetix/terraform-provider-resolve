@@ -75,7 +75,7 @@ resource "vulnetix_library_item" "triage_prompt" {
 ### Optional
 
 - `annotations` (Map of String) Free key/value notes for people and tools (`metadata.annotations`), such as a ticket link.
-- `body` (String) The item: markdown for skill, prompt and command, JSON for the rest. The library's size limit for the type applies.
+- `body` (String, Sensitive) The item: markdown for skill, prompt and command, JSON for the rest. The library's size limit for the type applies.
 - `file` (String) A file holding the item, the same as body.
 - `files` (Attributes Set) The scripts a hook bundle runs, written beside its hooks.json. Only a hook carries files: at most 32, each a relative path of safe segments (not hooks.json) and UTF-8 text of up to 256 KiB. (see [below for nested schema](#nestedatt--files))
 - `labels` (Map of String) Free key/value labels (`metadata.labels`). Stored with the object, never interpreted by the server.
@@ -94,7 +94,7 @@ Required:
 
 Optional:
 
-- `body` (String) The file's contents.
+- `body` (String, Sensitive) The file's contents.
 - `file` (String) A file holding the contents, the same as body.
 
 

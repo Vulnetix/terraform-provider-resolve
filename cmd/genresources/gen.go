@@ -83,6 +83,8 @@ type generator struct {
 	// used, so a test can find stale ones.
 	undecided []string
 	decided   map[string]bool
+	// marked collects the sensitive entries used, so a test can find stale ones.
+	marked map[string]bool
 
 	// The kind being generated, its x-vulnetix annotations (nil before
 	// v1.3.0) and the secret paths found in its schema.
@@ -364,6 +366,13 @@ func (g *generator) property(attrs, fields *bytes.Buffer, tree *[]hfield, prop *
 
 	default:
 		if ek, _, ok := scalar(r); ok {
+			if _, ok := sensitive[where]; ok && ek == "fieldString" {
+				if g.marked == nil {
+					g.marked = map[string]bool{}
+				}
+				g.marked[where] = true
+				head += "Sensitive: true,\n"
+			}
 			fmt.Fprintf(attrs, "%q: schema.%s{\n%s%s},\n", attr, scalarAttr(ek), head, scalarValidators(r, ek))
 			fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: %s},\n", attr, jsonName, ek)
 			*tree = append(*tree, hfield{Attr: attr, JSON: jsonName, Shape: shapeScalar, Elem: ek})

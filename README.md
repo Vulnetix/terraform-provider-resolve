@@ -214,10 +214,11 @@ go get github.com/vulnetix/config-schemas@vX.Y.Z
 go generate ./...   # cmd/genresources, then tfplugindocs
 ```
 
-`cmd/genresources` writes `internal/provider/zz_generated_<kind>.go` for each kind (a `kindSpec`: the framework schema attributes plus the field map between attributes and spec keys) and `examples/resources/vulnetix_<kind>/{minimal,advanced}.tf` and `import.sh`. One generic resource (`internal/provider/resource_kind.go`) serves every kind. It reads each schema's `x-vulnetix` block for `validateOnly`, `singleton`, `dependsOn`, `secrets` and `celFields`. Two lists stay by hand, each checked by a test:
+`cmd/genresources` writes `internal/provider/zz_generated_<kind>.go` for each kind (a `kindSpec`: the framework schema attributes plus the field map between attributes and spec keys) and `examples/resources/vulnetix_<kind>/{minimal,advanced}.tf` and `import.sh`. One generic resource (`internal/provider/resource_kind.go`) serves every kind. It reads each schema's `x-vulnetix` block for `validateOnly`, `singleton`, `dependsOn`, `secrets` and `celFields`. Three lists stay by hand, each checked by a test:
 
 - [`cmd/genresources/served.go`](cmd/genresources/served.go): the kinds the engine serves (vdb-site `handler/config_engine_kinds.go`). Add a kind there when its adapter ships.
 - [`cmd/genresources/collections.go`](cmd/genresources/collections.go): whether each array of a served kind is a list or a set, decided from how its engine adapter stores it.
+- [`cmd/genresources/sensitive.go`](cmd/genresources/sensitive.go): plain string arguments that can hold a credential (LibraryItem `body` and `files[].body`), marked Sensitive so plans never print them.
 
 `templates/resources.md.tmpl` renders the Minimal, Advanced and Import sections on every resource page. CI fails when the generated code, examples or docs are not what `go generate` writes.
 

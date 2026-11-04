@@ -28,6 +28,7 @@ var libraryItemKind = kindSpec{
 			"body": schema.StringAttribute{
 				MarkdownDescription: "The item: markdown for skill, prompt and command, JSON for the rest. The library's size limit for the type applies.",
 				Optional:            true,
+				Sensitive:           true,
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(1, 262144),
 				},
@@ -49,6 +50,7 @@ var libraryItemKind = kindSpec{
 					"body": schema.StringAttribute{
 						MarkdownDescription: "The file's contents.",
 						Optional:            true,
+						Sensitive:           true,
 						Validators: []validator.String{
 							stringvalidator.LengthBetween(1, 262144),
 						},
