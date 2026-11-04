@@ -1,0 +1,14 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/DetectionRule/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: DetectionRule
+metadata:
+  name: sigmahq-aws-root-login
+spec:
+  enabled: true
+  intervalSec: 60
+  latenessSec: 300
+  maxAlertsPerRun: 50
+  sigmahq: rules/cloud/aws/cloudtrail/aws_root_account_usage.yml
+  suppressSec: 900

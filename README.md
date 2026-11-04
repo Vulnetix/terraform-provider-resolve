@@ -214,7 +214,7 @@ go get github.com/vulnetix/config-schemas@vX.Y.Z
 go generate ./...   # cmd/genresources, then tfplugindocs
 ```
 
-`cmd/genresources` writes `internal/provider/zz_generated_<kind>.go` for each kind (a `kindSpec`: the framework schema attributes plus the field map between attributes and spec keys) and `examples/resources/vulnetix_<kind>/{minimal,advanced}.tf` and `import.sh`. One generic resource (`internal/provider/resource_kind.go`) serves every kind. It reads each schema's `x-vulnetix` block for `validateOnly`, `singleton`, `dependsOn`, `secrets` and `celFields`. Three lists stay by hand, each checked by a test:
+`cmd/genresources` writes `internal/provider/zz_generated_<kind>.go` for each kind (a `kindSpec`: the framework schema attributes plus the field map between attributes and spec keys) and `examples/resources/vulnetix_<kind>/{minimal,advanced,reference}.tf`, `reference.yaml` and `import.sh`. `reference` is the minimal example plus every argument that has a schema default, set to it; its YAML is checked against config-schemas and published in [Vulnetix/platform-iac-examples](https://github.com/Vulnetix/platform-iac-examples). One generic resource (`internal/provider/resource_kind.go`) serves every kind. It reads each schema's `x-vulnetix` block for `validateOnly`, `singleton`, `dependsOn`, `secrets` and `celFields`. Three lists stay by hand, each checked by a test:
 
 - [`cmd/genresources/served.go`](cmd/genresources/served.go): the kinds the engine serves (vdb-site `handler/config_engine_kinds.go`). Add a kind there when its adapter ships.
 - [`cmd/genresources/collections.go`](cmd/genresources/collections.go): whether each array of a served kind is a list or a set, decided from how its engine adapter stores it.

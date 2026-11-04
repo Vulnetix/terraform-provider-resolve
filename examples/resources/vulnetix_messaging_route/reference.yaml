@@ -1,0 +1,26 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/MessagingRoute/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: MessagingRoute
+metadata:
+  name: broken-builds
+spec:
+  actorFilter:
+    mode: any
+  allowSensitiveWebhook: false
+  digest:
+    mode: immediate
+  enabled: true
+  eventTypes:
+    - scan.build_broken
+  filters:
+    findings:
+      ignoreTest: false
+      newOnly: false
+      onlyDirect: false
+      onlyProduction: false
+  includePII: false
+  maxPerHour: 60
+  minSeverity: info
+  mode: live

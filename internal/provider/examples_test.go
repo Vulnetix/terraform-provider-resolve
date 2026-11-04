@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/config"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -238,4 +240,53 @@ func writeOnlyPaths(fields []field, prefix string) []string {
 		}
 	}
 	return out
+}
+
+// reference.tf adds every schema default to the minimal example under the
+// same object. Applied over an object created from minimal.tf, it may only
+// update that object in place, never replace or delete it, and once applied
+// it plans clean (the framework checks the plan after every apply step).
+func TestReferenceExamples(t *testing.T) {
+	for _, k := range generatedKinds {
+		t.Run(k.Kind, func(t *testing.T) {
+			_, srv := newFakeAPI(t)
+			minimal, ref := loadExample(t, k, "minimal"), loadExample(t, k, "reference")
+			if len(ref.addrs) == 0 || ref.addrs[0] != minimal.addrs[0] {
+				t.Fatalf("reference.tf must declare the minimal example's object first: %v vs %v", ref.addrs, minimal.addrs)
+			}
+			resource.UnitTest(t, resource.TestCase{
+				ProtoV6ProviderFactories: testFactories(),
+				Steps: []resource.TestStep{
+					{Config: providerBlock(srv.URL) + minimal.hcl, ConfigVariables: exampleVars(minimal)},
+					{
+						Config:          providerBlock(srv.URL) + ref.hcl,
+						ConfigVariables: exampleVars(ref),
+						ConfigPlanChecks: resource.ConfigPlanChecks{
+							PreApply: []plancheck.PlanCheck{
+								updateOrNoop{ref.addrs[0]},
+							},
+						},
+						Check: resource.TestCheckResourceAttr(ref.addrs[0], "id", ref.names[0]),
+					},
+				},
+			})
+		})
+	}
+}
+
+// updateOrNoop fails a plan that replaces or deletes the object: a kind with
+// no defaults plans nothing, one with defaults updates in place.
+type updateOrNoop struct{ addr string }
+
+func (c updateOrNoop) CheckPlan(_ context.Context, req plancheck.CheckPlanRequest, resp *plancheck.CheckPlanResponse) {
+	for _, rc := range req.Plan.ResourceChanges {
+		if rc.Address != c.addr {
+			continue
+		}
+		if !rc.Change.Actions.Update() && !rc.Change.Actions.NoOp() {
+			resp.Error = fmt.Errorf("%s: expected update or no-op, got %v", c.addr, rc.Change.Actions)
+		}
+		return
+	}
+	resp.Error = fmt.Errorf("%s is not in the plan", c.addr)
 }

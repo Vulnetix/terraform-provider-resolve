@@ -1,0 +1,10 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/MessagingTemplate/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: MessagingTemplate
+metadata:
+  name: plain-title
+spec:
+  content:
+    title: '{{.event.title}}'

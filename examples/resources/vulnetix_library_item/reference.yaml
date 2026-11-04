@@ -1,0 +1,15 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/LibraryItem/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: LibraryItem
+metadata:
+  name: pdf-tools
+spec:
+  body: |
+    ---
+    name: pdf-tools
+    description: Read, split and merge PDF files.
+    ---
+    Use the pdf tools on the path the user gives.
+  type: skill

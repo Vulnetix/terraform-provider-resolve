@@ -1,0 +1,17 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/FactoryWorkflow/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: FactoryWorkflow
+metadata:
+  name: patch-on-demand
+spec:
+  enabled: true
+  graph:
+    nodes:
+      - config:
+          kind: manual
+        id: start
+        title: Run by hand
+        type: trigger
+  publish: true

@@ -9,3 +9,6 @@ terraform-provider-resolve_*
 # Local signing key passphrase and fingerprint (just gpg-key)
 .env
 .env.*
+
+# go build ./cmd/... writes the generator binary here
+/genresources

@@ -1,0 +1,10 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/TeaCollection/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: TeaCollection
+metadata:
+  name: acme-payments-2-4-0
+spec:
+  product: acme-payments
+  release: 2.4.0

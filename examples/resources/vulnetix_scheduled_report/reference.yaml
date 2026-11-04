@@ -1,0 +1,28 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/ScheduledReport/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: ScheduledReport
+metadata:
+  name: daily-dns-digest
+spec:
+  at: "08:00"
+  destination:
+    connections:
+      - secops-slack
+    kind: messaging
+  enabled: true
+  format:
+    csv: true
+    layout: table_chart
+    link: true
+    query: false
+    rows: 20
+  monthday: 1
+  repeat: daily
+  rowsWindowMs: 8.64e+07
+  searchRef: dynamic-dns-lookups
+  sincePrevious: false
+  weekday: 1
+  whenEmpty: skip
+  zone: UTC

@@ -1,0 +1,9 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/GitHubInstallation/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: GitHubInstallation
+metadata:
+  name: acme
+spec:
+  installationId: 51234567

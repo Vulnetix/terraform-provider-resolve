@@ -94,6 +94,9 @@ func writeExamples(out, src string, k *kindOut) error {
 			return err
 		}
 	}
+	if err := writeReference(out, src, k); err != nil {
+		return err
+	}
 	imp := fmt.Sprintf("# Import an existing %s by its name (metadata.name).\nterraform import vulnetix_%s.%s %s\n",
 		k.Kind, k.TypeName, resourceLabel(firstName), firstName)
 	return os.WriteFile(filepath.Join(dir, "import.sh"), []byte(imp), 0o644)
@@ -102,10 +105,13 @@ func writeExamples(out, src string, k *kindOut) error {
 // removeStaleExamples deletes the generated files of every example
 // directory, so a kind that is no longer served leaves nothing behind.
 func removeStaleExamples(out string) error {
-	for _, name := range append(append([]string{}, exampleVariants...), "import") {
+	for _, name := range append(append([]string{}, exampleVariants...), "reference", "import") {
 		ext := ".tf"
 		if name == "import" {
 			ext = ".sh"
+		}
+		if name == "reference" {
+			_ = removeGlob(filepath.Join(out, "vulnetix_*", "reference.yaml"))
 		}
 		matches, err := filepath.Glob(filepath.Join(out, "vulnetix_*", name+ext))
 		if err != nil {
@@ -228,11 +234,14 @@ func exampleHCL(k *kindOut, variant string, raw []byte) ([]byte, string, error) 
 	}
 
 	var b bytes.Buffer
-	what := "Only the arguments the kind requires."
-	if variant == "advanced" {
-		what = "Every argument the kind supports."
+	switch variant {
+	case "reference":
+		fmt.Fprintf(&b, "# Every argument with a schema default, set to that default, plus the required\n# arguments from config-schemas examples/%s/minimal.yaml. A plan only sets values\n# a tenant left unset. See advanced.tf for the arguments that have no default.\n\n", k.Kind)
+	case "advanced":
+		fmt.Fprintf(&b, "# Every argument the kind supports. From config-schemas examples/%s/%s.yaml.\n\n", k.Kind, variant)
+	default:
+		fmt.Fprintf(&b, "# Only the arguments the kind requires. From config-schemas examples/%s/%s.yaml.\n\n", k.Kind, variant)
 	}
-	fmt.Fprintf(&b, "# %s From config-schemas examples/%s/%s.yaml.\n\n", what, k.Kind, variant)
 	if vars.Len() > 0 {
 		b.Write(vars.Bytes())
 		b.WriteString("\n")
@@ -544,4 +553,18 @@ func typed(v any, elem string) any {
 		return b.String()
 	}
 	return v
+}
+
+// removeGlob deletes every file matching pattern.
+func removeGlob(pattern string) error {
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return err
+	}
+	for _, m := range matches {
+		if err := os.Remove(m); err != nil {
+			return err
+		}
+	}
+	return nil
 }

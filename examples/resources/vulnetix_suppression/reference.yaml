@@ -1,0 +1,11 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/Suppression/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: Suppression
+metadata:
+  name: lodash-prototype-pollution
+spec:
+  scope:
+    rule: CVE-2021-23337
+  type: risk_accepted

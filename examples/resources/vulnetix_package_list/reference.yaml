@@ -1,0 +1,11 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/PackageList/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: PackageList
+metadata:
+  name: banned
+spec:
+  entries:
+    - purl: pkg:npm/event-stream@3.3.6
+  list: deny

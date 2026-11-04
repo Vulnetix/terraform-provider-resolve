@@ -35,6 +35,12 @@ type node struct {
 	OneOf       []*node          `json:"oneOf"`
 	AnyOf       []*node          `json:"anyOf"`
 	Defs        map[string]*node `json:"$defs"`
+	// Conditional constraints, read only to find properties a document may not
+	// always carry (the reference example leaves those out).
+	If   *node `json:"if"`
+	Then *node `json:"then"`
+	Else *node `json:"else"`
+	Not  *node `json:"not"`
 	// X is the root x-vulnetix annotation (config-schemas v1.3.0 and later).
 	X *annotations `json:"x-vulnetix"`
 
@@ -122,6 +128,9 @@ func setFile(n *node, file string) {
 		for _, c := range list {
 			setFile(c, file)
 		}
+	}
+	for _, c := range []*node{n.If, n.Then, n.Else, n.Not} {
+		setFile(c, file)
 	}
 	setFile(n.Items, file)
 }

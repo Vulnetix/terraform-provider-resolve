@@ -1,0 +1,14 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/Campaign/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: Campaign
+metadata:
+  name: log4shell
+spec:
+  done:
+    criteria:
+      - type: gone-from-scans
+  name: Log4Shell clean-up
+  target: vulnerabilities
+  timing: frozen

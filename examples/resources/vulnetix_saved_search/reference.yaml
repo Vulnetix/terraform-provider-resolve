@@ -1,0 +1,13 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/SavedSearch/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: SavedSearch
+metadata:
+  name: dynamic-dns-lookups
+spec:
+  mode: dsl
+  rangeMs: 8.64e+07
+  text: |
+    dns_events
+    | where qname endswith ('.duckdns.org', '.no-ip.org', '.ddns.net')

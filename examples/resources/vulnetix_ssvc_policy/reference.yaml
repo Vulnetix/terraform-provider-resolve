@@ -1,0 +1,28 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/SsvcPolicy/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: SsvcPolicy
+metadata:
+  name: default
+spec:
+  automatable: cvss >= 9.0 || epss >= 0.7
+  exploitation:
+    active: kev || exploitMaturity in ['active', 'weaponized']
+    poc: exploitMaturity == 'poc' || exploitCount > 0
+  missionWellBeing:
+    critical: high
+    high: high
+    low: low
+    medium: medium
+    unclassified: medium
+  outcomes:
+    act:
+      dueDays: 0
+    attend:
+      dueDays: 0
+    track:
+      dueDays: 0
+    trackStar:
+      dueDays: 0
+  technicalImpact: cvss >= 9.0 || malicious

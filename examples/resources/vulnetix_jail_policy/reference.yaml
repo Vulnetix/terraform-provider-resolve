@@ -1,0 +1,12 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/JailPolicy/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: JailPolicy
+metadata:
+  name: org-default
+spec:
+  defaultStalenessDays: 7
+  enabled: true
+  enforcementMode: enforce
+  onStale: fail

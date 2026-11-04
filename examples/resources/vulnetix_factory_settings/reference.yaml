@@ -1,0 +1,227 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/FactorySettings/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: FactorySettings
+metadata:
+  name: default
+spec:
+  agents:
+    finalize_at: 0
+    max_attempts: 0
+    max_continuations: 0
+    max_cost_usd_per_item: 0
+    max_iterations: 0
+    max_passes_per_item: 0
+    max_wall_minutes: 0
+  approve:
+    sensitive_paths: []
+  audit:
+    calls: true
+    sign: true
+    weekly_report: true
+  autonomy:
+    claim_ttl_minutes: 60
+    concurrency: 4
+    default: draft_pr
+    max: draft_pr
+    max_attempts: 3
+    no_host_ttl_hours: 6
+    parked_concurrency: 50
+    plan_approval: true
+  belai:
+    a2a:
+      show: true
+    ask_permission: false
+    auto_commit_per_task: true
+    guardrails: "on"
+    mode: goal
+    show_internal_work: decisions
+    tests:
+      on_fail: fix
+      post_end: goal
+  budget:
+    alerts:
+      - 50
+      - 80
+      - 100
+    factory_share: 75
+    month: 3e+07
+    on_exceed: switch_to_pix_allocation
+  crews:
+    lease: 30m
+  defaults:
+    approve-ready:
+      enabled: true
+    ci-fix:
+      enabled: true
+    conflict-fix:
+      enabled: true
+    enabled: true
+    issue-to-pr:
+      enabled: true
+    lint-sweep:
+      enabled: true
+    pr-review:
+      enabled: true
+    test-sweep:
+      enabled: true
+  delivery:
+    companyDomain: ""
+    compare: true
+    decisions: true
+    enabled: true
+    hoursPerMonth: 150
+    idleGapMin: 5
+    kinds:
+      goal:
+        enabled: true
+        minutes: 3
+      merge:
+        enabled: true
+        minutes: 8
+      mode:
+        enabled: true
+        minutes: 0.5
+      other:
+        enabled: true
+        minutes: 2
+      plan:
+        enabled: true
+        minutes: 4
+      toolcall:
+        enabled: false
+        minutes: 0
+      triage:
+        enabled: true
+        minutes: 6
+    manualCardDays: 5
+    manualCycleDays: 4.5
+    manualDecisionWait: 6
+    manualIssueDays: 3
+    multiplier: 2.4
+    overheadPct: 20
+    overheadRate: 105
+    people: true
+    peopleRate: 110
+    rate: 95
+    reviewMinPer100: 4
+    roles:
+      devops:
+        enabled: true
+        mult: 2
+        rate: 90
+      planner:
+        enabled: true
+        mult: 1.6
+        rate: 120
+      qa:
+        enabled: true
+        mult: 2.2
+        rate: 70
+      reviewer:
+        enabled: true
+        mult: 1.5
+        rate: 95
+      security:
+        enabled: true
+        mult: 2
+        rate: 110
+      sse:
+        enabled: true
+        mult: 2.4
+        rate: 95
+      writer:
+        enabled: true
+        mult: 1.8
+        rate: 60
+    sources:
+      admin: true
+      chat: true
+      checkpoint: true
+      comment: true
+      commit: true
+      notification: true
+      pixcall: true
+      review: true
+    value: true
+  factory:
+    fanoutCap: 6
+  forge:
+    branch_prefix: belai/K-
+    calls_per_hour: 5000
+    check_runs: false
+    etag: true
+    poll:
+      fallback: conditional_poll_10m
+    pr_state: draft
+    protected: true
+    quota:
+      factory_share: 10
+      on_exhausted: pause_live_reads
+      proactive_writes_per_hour: 60
+      reserve: 20
+    read:
+      default: posture_mirror
+    stale:
+      alerts: 1h
+      checks: 2m
+      pulls: 5m
+      repo: 6h
+  hosts:
+    runOn: auto
+    runOnFallback: auto
+  jail:
+    enforcementMode: enforce
+  kanban:
+    conflict_comment: true
+    mode: all
+    opt_out_label: no-github
+  notify:
+    connector: slack
+    events: escalations_holds_budget
+  persistence:
+    export: manual
+    postgres: "on"
+    retention: 400d
+  pix:
+    classifier: clef
+    egressMode: deny_except_allow
+    extensionMode: packs_only
+    jevDailyCap: 2000
+    maintenance: []
+    reservePercent: 20
+    size: medium
+    versionPolicy: safest
+  providers:
+    code: pix-smart
+  schedules:
+    blackout: []
+    missed: run_once
+    tz: UTC
+  scope:
+    archived: false
+    dependencies: false
+    interest: any_signal
+    sync: 6h
+  signing:
+    auto_add: true
+    email: primary
+    mode: preferred
+    on_missing: readd
+    retire_days: "30"
+    rotate_days: "365"
+  systemone:
+    below_threshold: escalate_human
+    fallback: jev
+    min_confidence: 0.8
+    model: clef-flash
+    on_abstain: escalate_human
+    override: true
+    retention: full_400d
+  tea:
+    publish: on_release_tag
+  vault:
+    grant:
+      mode: all
+    on_error: pause_affected_workflows

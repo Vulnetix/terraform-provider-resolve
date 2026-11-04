@@ -1,0 +1,12 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/RegistryConnection/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: RegistryConnection
+metadata:
+  name: github-packages
+spec:
+  ecosystem: npm
+  enabled: true
+  scope: []
+  url: https://npm.pkg.github.com/

@@ -291,7 +291,7 @@ func TestGeneratedExamplesUpToDate(t *testing.T) {
 	checked := filepath.Join("..", "..", "examples", "resources")
 	list := func(root string) map[string]bool {
 		out := map[string]bool{}
-		for _, pat := range []string{"*/minimal.tf", "*/advanced.tf", "*/import.sh"} {
+		for _, pat := range []string{"*/minimal.tf", "*/advanced.tf", "*/reference.tf", "*/reference.yaml", "*/import.sh"} {
 			m, _ := filepath.Glob(filepath.Join(root, pat))
 			for _, f := range m {
 				rel, _ := filepath.Rel(root, f)
@@ -394,6 +394,35 @@ func TestImportableAsTheServerHoldsIt(t *testing.T) {
 			if strings.Contains(b, "WriteOnly: true") && strings.Contains(b, "Required: true") {
 				t.Errorf("%s: a write-only secret is Required, so an existing object cannot be imported without it", k)
 			}
+		}
+	}
+}
+
+// Every reference document is valid against the config-schemas release the
+// provider is built from: the defaults it adds never break a oneOf or an
+// if/then/else of the kind's schema.
+func TestReferenceDocumentsValid(t *testing.T) {
+	v, err := configschemas.NewValidator()
+	if err != nil {
+		t.Fatal(err)
+	}
+	matches, err := filepath.Glob(filepath.Join("..", "..", "examples", "resources", "vulnetix_*", "reference.yaml"))
+	if err != nil || len(matches) == 0 {
+		t.Fatalf("no reference.yaml files: %v", err)
+	}
+	for _, m := range matches {
+		f, err := os.Open(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		docs, err := configschemas.Decode(f)
+		f.Close()
+		if err != nil || len(docs) != 1 {
+			t.Errorf("%s: %d documents, %v", m, len(docs), err)
+			continue
+		}
+		if err := v.Validate(docs[0]); err != nil {
+			t.Errorf("%s: %v", m, err)
 		}
 	}
 }

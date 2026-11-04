@@ -1,0 +1,12 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/FactoryTrigger/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: FactoryTrigger
+metadata:
+  name: run-now
+spec:
+  startAt:
+    - scan
+  type: manual
+  workflow: security-patch-train

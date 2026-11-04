@@ -23,6 +23,12 @@ Every argument the kind supports. A secret is a write-only `*_wo` argument fed f
 
 {{ tffile (printf "examples/resources/%s/advanced.tf" .Name) }}
 
+### Reference
+
+Every argument that has a schema default, set to that default, plus the required arguments. Planned against a tenant it only sets values the tenant left unset. Every kind's reference file is also in [Vulnetix/platform-iac-examples](https://github.com/Vulnetix/platform-iac-examples), with the same document as YAML.
+
+{{ tffile (printf "examples/resources/%s/reference.tf" .Name) }}
+
 {{ .SchemaMarkdown | trimspace }}
 {{- if .HasImport }}
 

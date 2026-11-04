@@ -1,0 +1,15 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/FactorySchedule/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: FactorySchedule
+metadata:
+  name: nightly
+spec:
+  cron: 0 3 * * *
+  enabled: true
+  runsOn: aws
+  startAt:
+    - scan
+  timezone: UTC
+  workflow: security-patch-train

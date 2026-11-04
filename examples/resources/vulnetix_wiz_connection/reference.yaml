@@ -1,0 +1,10 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/WizConnection/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: WizConnection
+metadata:
+  name: default
+spec:
+  clientId: 4ba3c9f2d7e14a6b8c0d1e2f3a4b5c6d
+  tenantDatacenter: us17

@@ -1,0 +1,26 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/PackageFirewallPolicy/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: PackageFirewallPolicy
+metadata:
+  name: default
+spec:
+  block:
+    active: false
+    badActors: false
+    eol: false
+    kev: false
+    malware: false
+    poc: false
+    weaponized: false
+  cooldownDays: 0
+  mode: enforce
+  review:
+    staleDecisionDays: 90
+    staleUsageDays: 90
+  thresholds:
+    cess: 0
+    cvss: 0
+    epss: 0
+  versionLag: 0

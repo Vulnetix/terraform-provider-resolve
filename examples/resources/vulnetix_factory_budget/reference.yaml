@@ -1,0 +1,12 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/FactoryBudget/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: FactoryBudget
+metadata:
+  name: org-monthly-tokens
+spec:
+  actionAtLimit: alert_only
+  appliesTo: org
+  limit: 20000000
+  unit: tokens

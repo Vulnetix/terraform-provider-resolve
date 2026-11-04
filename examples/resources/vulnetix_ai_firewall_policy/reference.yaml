@@ -1,0 +1,13 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/AiFirewallPolicy/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: AiFirewallPolicy
+metadata:
+  name: default
+spec:
+  holdPolicy:
+    holdTimeoutAction: wait
+    holdTimeoutMinutes: 0
+    holdUnknown: false
+  prune: false

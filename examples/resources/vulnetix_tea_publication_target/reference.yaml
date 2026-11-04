@@ -1,0 +1,10 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/TeaPublicationTarget/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: TeaPublicationTarget
+metadata:
+  name: globex-tea
+spec:
+  rootUrl: https://tea.globex.example.com/tea/v1
+  suspended: false

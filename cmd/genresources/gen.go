@@ -71,6 +71,8 @@ type kindOut struct {
 	Singleton bool
 	// Tree is the attribute tree, for writing examples.
 	Tree []hfield
+	// Defaults are the spec's schema defaults, for the reference example.
+	Defaults map[string]any
 }
 
 type generator struct {
@@ -187,7 +189,11 @@ func (g *generator) generate(kind string) (*kindOut, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: format generated code: %w\n%s", kind, err, src.String())
 	}
-	return &kindOut{Kind: kind, TypeName: snake(kind), Ident: ident, Source: out, Singleton: singleton, Tree: tree}, nil
+	defaults, err := g.specDefaults(root.Properties["spec"], nil)
+	if err != nil {
+		return nil, fmt.Errorf("%s: defaults: %w", kind, err)
+	}
+	return &kindOut{Kind: kind, TypeName: snake(kind), Ident: ident, Source: out, Singleton: singleton, Tree: tree, Defaults: defaults}, nil
 }
 
 const imports = `import (

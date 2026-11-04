@@ -1,0 +1,13 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/ComplianceTarget/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: ComplianceTarget
+metadata:
+  name: quarterly-owasp
+spec:
+  cadence: quarterly
+  enabled: true
+  framework: owasp_top_10
+  scope:
+    repositories: []

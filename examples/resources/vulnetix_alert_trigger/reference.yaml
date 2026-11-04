@@ -1,0 +1,22 @@
+# Every field with a schema default, set to that default, plus the required
+# fields from config-schemas examples/AlertTrigger/minimal.yaml. reference.tf is the same
+# document as Terraform.
+apiVersion: vulnetix.com/v1
+kind: AlertTrigger
+metadata:
+  name: dns-investigate
+spec:
+  destination:
+    kind: workflow
+  enabled: true
+  everySec: 300
+  levers:
+    ask: workflow
+    cooldownSec: 3600
+    hours: always
+    maxPerHour: 4
+    minRows: 1
+    rowsCap: 25
+    windowSec: 300
+    zone: UTC
+  searchRef: dynamic-dns-lookups
