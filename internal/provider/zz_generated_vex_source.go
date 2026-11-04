@@ -47,10 +47,7 @@ var vexSourceKind = kindSpec{
 					"paths": schema.SetAttribute{
 						MarkdownDescription: "Globs, relative to the repository root, selecting the documents.",
 						Required:            true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
-						ElementType: types.StringType,
+						ElementType:         types.StringType,
 					},
 					"ref": schema.StringAttribute{
 						MarkdownDescription: "A branch, tag or commit. Defaults to the default branch.",
@@ -170,16 +167,10 @@ var vexSourceKind = kindSpec{
 					"products": schema.SetAttribute{
 						MarkdownDescription: "TEA products, by TEI or uuid.",
 						Optional:            true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
-						ElementType: types.StringType,
+						ElementType:         types.StringType,
 					},
 					"repos": schema.SetAttribute{
-						Optional: true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
+						Optional:    true,
 						ElementType: types.StringType,
 					},
 				},
@@ -215,10 +206,7 @@ var vexSourceKind = kindSpec{
 					"allowed_authors": schema.SetAttribute{
 						MarkdownDescription: "Only statements by these authors (the VEX author field) are used.",
 						Optional:            true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
-						ElementType: types.StringType,
+						ElementType:         types.StringType,
 					},
 					"require_signature": schema.BoolAttribute{
 						MarkdownDescription: "Refuse a document that is not signed. Schema default: `false`.",

@@ -82,9 +82,6 @@ var campaignKind = kindSpec{
 					"criteria": schema.ListNestedAttribute{
 						MarkdownDescription: "The done criteria. For a vulnerabilities campaign: gone-from-scans, safe-version and eol-supported. For a dependencies campaign: package-removed, latest-version and safe-version-used. A repositories campaign takes either family. A finding the scanner marks fixed always closes, whatever the criteria.",
 						Required:            true,
-						Validators: []validator.List{
-							listvalidator.SizeAtLeast(1),
-						},
 						NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 							"category": schema.StringAttribute{
 								MarkdownDescription: "gone-from-scans only: the finding category whose scans count. One of `sca`, `sast`, `secrets`, `iac`, `license`.",

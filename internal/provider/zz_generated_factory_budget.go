@@ -37,7 +37,6 @@ var factoryBudgetKind = kindSpec{
 				MarkdownDescription: "The percentages of the limit, ascending, from 1 to 100, at which the factory raises an alert. Defaults to 80 and 100.",
 				Optional:            true,
 				Validators: []validator.Set{
-					setvalidator.SizeAtLeast(1),
 					setvalidator.SizeAtMost(10),
 				},
 				ElementType: types.Int64Type,

@@ -1131,10 +1131,7 @@ var factorySettingsKind = kindSpec{
 							"days": schema.SetAttribute{
 								MarkdownDescription: "The days the window starts on.",
 								Required:            true,
-								Validators: []validator.Set{
-									setvalidator.SizeAtLeast(1),
-								},
-								ElementType: types.StringType,
+								ElementType:         types.StringType,
 							},
 							"end": schema.StringAttribute{
 								MarkdownDescription: "End time, HH:MM, in tz. An end before the start runs past midnight.",

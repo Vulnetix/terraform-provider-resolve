@@ -59,24 +59,15 @@ var ssvcPolicyKind = kindSpec{
 				},
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 					"automatable": schema.SetAttribute{
-						Optional: true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
+						Optional:    true,
 						ElementType: types.StringType,
 					},
 					"exploitation": schema.SetAttribute{
-						Optional: true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
+						Optional:    true,
 						ElementType: types.StringType,
 					},
 					"mission_well_being": schema.SetAttribute{
-						Optional: true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
+						Optional:    true,
 						ElementType: types.StringType,
 					},
 					"outcome": schema.StringAttribute{
@@ -87,10 +78,7 @@ var ssvcPolicyKind = kindSpec{
 						},
 					},
 					"technical_impact": schema.SetAttribute{
-						Optional: true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
+						Optional:    true,
 						ElementType: types.StringType,
 					},
 				}},

@@ -44,7 +44,6 @@ var crewKind = kindSpec{
 				MarkdownDescription: "The agents in the crew, 1 to 8.",
 				Required:            true,
 				Validators: []validator.List{
-					listvalidator.SizeAtLeast(1),
 					listvalidator.SizeAtMost(8),
 				},
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{

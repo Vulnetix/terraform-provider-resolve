@@ -134,10 +134,7 @@ var complianceTargetKind = kindSpec{
 					"practices": schema.SetAttribute{
 						MarkdownDescription: "The practice groups checked: PO prepare the organisation, PS protect the software, PW produce well-secured software, RV respond to vulnerabilities. Left out, all four.",
 						Optional:            true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
-						ElementType: types.StringType,
+						ElementType:         types.StringType,
 					},
 				},
 			},

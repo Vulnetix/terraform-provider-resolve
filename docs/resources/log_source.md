@@ -100,12 +100,12 @@ resource "vulnetix_log_source" "sensor_events" {
 
 Required:
 
-- `api_token_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Where the client reads the Cloudflare API token. Sent for this apply only; Guardian never stores it, so deleting the source needs it again. Write-only: never stored in state. Needs Terraform 1.11 or later. Change `api_token_wo_version` to send a new value.
 - `datasets` (Set of String) firewall_events, http_requests and dns_logs are zone datasets, created on every zone the token can see (or those in zoneIds). The others are account datasets and need accountId.
 
 Optional:
 
 - `account_id` (String) The Cloudflare account id, for account datasets.
+- `api_token_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Where the client reads the Cloudflare API token. Sent for this apply only; Guardian never stores it, so deleting the source needs it again. Write-only: never stored in state. Needs Terraform 1.11 or later. Change `api_token_wo_version` to send a new value. Required by the server when the object is created; leave it out afterwards to keep the value it holds.
 - `api_token_wo_version` (Number) Any number. Change it to send `api_token_wo` again; Terraform cannot see a write-only value change.
 - `zone_ids` (Set of String) Only these zones. Left out, every zone the token can see (at most 1,000).
 

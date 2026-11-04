@@ -98,10 +98,10 @@ resource "vulnetix_aws_connection" "default" {
 Required:
 
 - `access_key_id` (String) An identifier, not a secret: it is in CloudTrail on every call it makes.
-- `secret_access_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Where the client reads the secret access key. It is proved with sts:GetCallerIdentity, kept in the tenant's vault, and never exported or shown in a plan. Write-only: never stored in state. Needs Terraform 1.11 or later. Change `secret_access_key_wo_version` to send a new value.
 
 Optional:
 
+- `secret_access_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Where the client reads the secret access key. It is proved with sts:GetCallerIdentity, kept in the tenant's vault, and never exported or shown in a plan. Write-only: never stored in state. Needs Terraform 1.11 or later. Change `secret_access_key_wo_version` to send a new value. Required by the server when the object is created; leave it out afterwards to keep the value it holds.
 - `secret_access_key_wo_version` (Number) Any number. Change it to send `secret_access_key_wo` again; Terraform cannot see a write-only value change.
 
 

@@ -37,8 +37,8 @@ var logSourceKind = kindSpec{
 						},
 					},
 					"api_token_wo": schema.StringAttribute{
-						MarkdownDescription: "Where the client reads the Cloudflare API token. Sent for this apply only; Guardian never stores it, so deleting the source needs it again. Write-only: never stored in state. Needs Terraform 1.11 or later. Change `api_token_wo_version` to send a new value.",
-						Required:            true,
+						MarkdownDescription: "Where the client reads the Cloudflare API token. Sent for this apply only; Guardian never stores it, so deleting the source needs it again. Write-only: never stored in state. Needs Terraform 1.11 or later. Change `api_token_wo_version` to send a new value. Required by the server when the object is created; leave it out afterwards to keep the value it holds.",
+						Optional:            true,
 						WriteOnly:           true,
 						Sensitive:           true,
 					},
@@ -49,16 +49,12 @@ var logSourceKind = kindSpec{
 					"datasets": schema.SetAttribute{
 						MarkdownDescription: "firewall_events, http_requests and dns_logs are zone datasets, created on every zone the token can see (or those in zoneIds). The others are account datasets and need accountId.",
 						Required:            true,
-						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
-						},
-						ElementType: types.StringType,
+						ElementType:         types.StringType,
 					},
 					"zone_ids": schema.SetAttribute{
 						MarkdownDescription: "Only these zones. Left out, every zone the token can see (at most 1,000).",
 						Optional:            true,
 						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
 							setvalidator.SizeAtMost(50),
 						},
 						ElementType: types.StringType,

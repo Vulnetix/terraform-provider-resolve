@@ -33,7 +33,6 @@ var alertTriggerKind = kindSpec{
 					"connections": schema.SetAttribute{
 						Optional: true,
 						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
 							setvalidator.SizeAtMost(10),
 						},
 						ElementType: types.StringType,
@@ -41,7 +40,6 @@ var alertTriggerKind = kindSpec{
 					"emails": schema.SetAttribute{
 						Optional: true,
 						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
 							setvalidator.SizeAtMost(20),
 						},
 						ElementType: types.StringType,

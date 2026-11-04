@@ -365,3 +365,35 @@ func TestSensitiveEntriesExist(t *testing.T) {
 		}
 	}
 }
+
+// An object the server already holds must import and plan as it is: a
+// required write-only secret is optional in Terraform (leaving it out keeps
+// the server's value), and minItems is left to the server (it holds a
+// LogSource with no datasets). maxItems stays a plan-time check.
+func TestImportableAsTheServerHoldsIt(t *testing.T) {
+	set, err := loadSchemas(configschemas.FS(), "schemas")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &generator{set: set, version: "test"}
+	for _, k := range set.kinds() {
+		out, err := g.generate(k)
+		if err != nil {
+			t.Fatalf("%s: %v", k, err)
+		}
+		src := string(out.Source)
+		if strings.Contains(src, "SizeAtLeast(") {
+			t.Errorf("%s: a minItems validator would refuse an object the server holds with fewer items", k)
+		}
+		for _, block := range strings.Split(src, "schema.StringAttribute{") {
+			end := strings.Index(block, "},")
+			if end < 0 {
+				continue
+			}
+			b := block[:end]
+			if strings.Contains(b, "WriteOnly: true") && strings.Contains(b, "Required: true") {
+				t.Errorf("%s: a write-only secret is Required, so an existing object cannot be imported without it", k)
+			}
+		}
+	}
+}

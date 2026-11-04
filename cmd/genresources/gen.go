@@ -284,8 +284,16 @@ func (g *generator) property(attrs, fields *bytes.Buffer, tree *[]hfield, prop *
 		}
 		g.secrets = append(g.secrets, docPath(where))
 		wo, ver := attr+"_wo", attr+"_wo_version"
+		// Always optional, even when the schema requires the secret: the server
+		// holds it, and leaving it out keeps that value, so an object that
+		// already has one can be imported and planned without it. The server
+		// still refuses a create that leaves a required secret out.
+		reqNote := ""
+		if required {
+			reqNote = " Required by the server when the object is created; leave it out afterwards to keep the value it holds."
+		}
 		fmt.Fprintf(attrs, "%q: schema.StringAttribute{\nMarkdownDescription: %s,\n%sWriteOnly: true,\nSensitive: true,\n},\n",
-			wo, strconv.Quote(strings.TrimSpace(desc+" Write-only: never stored in state. Needs Terraform 1.11 or later. Change `"+ver+"` to send a new value.")), optReq(required))
+			wo, strconv.Quote(strings.TrimSpace(desc+" Write-only: never stored in state. Needs Terraform 1.11 or later. Change `"+ver+"` to send a new value."+reqNote)), optReq(false))
 		fmt.Fprintf(attrs, "%q: schema.Int64Attribute{\nMarkdownDescription: %s,\nOptional: true,\n},\n",
 			ver, strconv.Quote("Any number. Change it to send `"+wo+"` again; Terraform cannot see a write-only value change."))
 		fmt.Fprintf(fields, "{Attr: %q, JSON: %q, WriteOnly: true, Version: %q},\n", wo, jsonName, ver)
@@ -541,9 +549,9 @@ func scalarValidators(n *node, kind string) string {
 func sizeValidators(n *node, coll string) string {
 	pkg := strings.ToLower(coll) + "validator"
 	var vs []string
-	if n.MinItems != nil {
-		vs = append(vs, fmt.Sprintf("%s.SizeAtLeast(%d)", pkg, *n.MinItems))
-	}
+	// No SizeAtLeast: the server enforces minItems when it applies, and it
+	// holds objects with fewer (a LogSource with no datasets), which must still
+	// import and plan. maxItems stays a plan-time check.
 	if n.MaxItems != nil {
 		vs = append(vs, fmt.Sprintf("%s.SizeAtMost(%d)", pkg, *n.MaxItems))
 	}

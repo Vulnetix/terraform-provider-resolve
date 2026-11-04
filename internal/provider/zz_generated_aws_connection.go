@@ -39,8 +39,8 @@ var awsConnectionKind = kindSpec{
 						},
 					},
 					"secret_access_key_wo": schema.StringAttribute{
-						MarkdownDescription: "Where the client reads the secret access key. It is proved with sts:GetCallerIdentity, kept in the tenant's vault, and never exported or shown in a plan. Write-only: never stored in state. Needs Terraform 1.11 or later. Change `secret_access_key_wo_version` to send a new value.",
-						Required:            true,
+						MarkdownDescription: "Where the client reads the secret access key. It is proved with sts:GetCallerIdentity, kept in the tenant's vault, and never exported or shown in a plan. Write-only: never stored in state. Needs Terraform 1.11 or later. Change `secret_access_key_wo_version` to send a new value. Required by the server when the object is created; leave it out afterwards to keep the value it holds.",
+						Optional:            true,
 						WriteOnly:           true,
 						Sensitive:           true,
 					},

@@ -278,10 +278,7 @@ var factoryTriggerKind = kindSpec{
 			"start_at": schema.SetAttribute{
 				MarkdownDescription: "The ids of the steps in the workflow's graph the trigger leads to: one edge from the trigger to each, in this order.",
 				Required:            true,
-				Validators: []validator.Set{
-					setvalidator.SizeAtLeast(1),
-				},
-				ElementType: types.StringType,
+				ElementType:         types.StringType,
 			},
 			"tables": schema.SetAttribute{
 				MarkdownDescription: "firewall, siem source: the Guardian tables.",

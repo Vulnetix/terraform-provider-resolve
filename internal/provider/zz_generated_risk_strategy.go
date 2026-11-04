@@ -35,9 +35,6 @@ var riskStrategyKind = kindSpec{
 			"rules": schema.ListNestedAttribute{
 				MarkdownDescription: "The rules in priority order: the first is tier 0. Exactly one REMAINING rule is required, and it belongs last, where it catches every finding no earlier rule matched.",
 				Required:            true,
-				Validators: []validator.List{
-					listvalidator.SizeAtLeast(1),
-				},
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 					"attack_path_id": schema.StringAttribute{
 						MarkdownDescription: "ATTACK_PATH only, and required there: the attack path the rule matches.",

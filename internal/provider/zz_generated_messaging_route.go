@@ -140,7 +140,6 @@ var messagingRouteKind = kindSpec{
 				MarkdownDescription: "The event types the route takes: a type (scan.completed), a family (pix.*), or * for every event. A type that was renamed is stored as its new name.",
 				Required:            true,
 				Validators: []validator.Set{
-					setvalidator.SizeAtLeast(1),
 					setvalidator.SizeAtMost(50),
 				},
 				ElementType: types.StringType,

@@ -51,10 +51,7 @@ var aiGovernanceListKind = kindSpec{
 				},
 			},
 			"patterns": schema.SetAttribute{
-				Required: true,
-				Validators: []validator.Set{
-					setvalidator.SizeAtLeast(1),
-				},
+				Required:    true,
 				ElementType: types.StringType,
 			},
 			"priority": schema.Int64Attribute{

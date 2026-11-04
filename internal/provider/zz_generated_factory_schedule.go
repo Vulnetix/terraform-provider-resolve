@@ -62,10 +62,7 @@ var factoryScheduleKind = kindSpec{
 			"start_at": schema.SetAttribute{
 				MarkdownDescription: "The ids of the steps in the workflow's graph the schedule leads to: one edge from the trigger to each, in this order.",
 				Required:            true,
-				Validators: []validator.Set{
-					setvalidator.SizeAtLeast(1),
-				},
-				ElementType: types.StringType,
+				ElementType:         types.StringType,
 			},
 			"timezone": schema.StringAttribute{
 				MarkdownDescription: "The IANA time zone the cron fields are read in, such as Australia/Melbourne. Defaults to UTC. Schema default: `UTC`.",

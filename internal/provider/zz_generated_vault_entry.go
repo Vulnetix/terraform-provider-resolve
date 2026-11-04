@@ -52,7 +52,6 @@ var vaultEntryKind = kindSpec{
 						MarkdownDescription: "The subjects covered, as UUIDs. 1 to 100 ids; duplicates are dropped and the list is kept sorted.",
 						Optional:            true,
 						Validators: []validator.Set{
-							setvalidator.SizeAtLeast(1),
 							setvalidator.SizeAtMost(100),
 						},
 						ElementType: types.StringType,
