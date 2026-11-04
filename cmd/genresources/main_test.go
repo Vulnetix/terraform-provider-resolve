@@ -58,7 +58,7 @@ func TestGenerateQualityGate(t *testing.T) {
 	for _, want := range []string{
 		`Singleton:   true`,
 		`"within_30_days": schema.StringAttribute{`,
-		`{Attr: "within_30_days", JSON: "within30Days", Kind: fieldString}`,
+		`{Attr: "within_30_days", JSON: "within30Days", Kind: fieldString, Default: "\"high\""}`,
 		`{Attr: "cooldown_days", JSON: "cooldownDays", Kind: fieldInt}`,
 		`stringvalidator.OneOf("poc", "active", "weaponized")`,
 		`int64validator.AtLeast(0)`,

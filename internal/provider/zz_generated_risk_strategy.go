@@ -83,11 +83,11 @@ var riskStrategyKind = kindSpec{
 		}
 	},
 	Fields: []field{
-		{Attr: "active", JSON: "active", Kind: fieldBool},
+		{Attr: "active", JSON: "active", Kind: fieldBool, Default: "false"},
 		{Attr: "description", JSON: "description", Kind: fieldString},
 		{Attr: "rules", JSON: "rules", Kind: fieldListObject, Children: []field{
 			{Attr: "attack_path_id", JSON: "attackPathId", Kind: fieldString},
-			{Attr: "enabled", JSON: "enabled", Kind: fieldBool},
+			{Attr: "enabled", JSON: "enabled", Kind: fieldBool, Default: "true"},
 			{Attr: "label", JSON: "label", Kind: fieldString},
 			{Attr: "metric", JSON: "metric", Kind: fieldString},
 			{Attr: "operator", JSON: "operator", Kind: fieldString},

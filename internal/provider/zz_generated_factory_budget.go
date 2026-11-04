@@ -108,7 +108,7 @@ var factoryBudgetKind = kindSpec{
 		}
 	},
 	Fields: []field{
-		{Attr: "action_at_limit", JSON: "actionAtLimit", Kind: fieldString},
+		{Attr: "action_at_limit", JSON: "actionAtLimit", Kind: fieldString, Default: "\"alert_only\""},
 		{Attr: "alert_at", JSON: "alertAt", Kind: fieldSet, Elem: fieldInt},
 		{Attr: "applies_to", JSON: "appliesTo", Kind: fieldString},
 		{Attr: "installation_id", JSON: "installationId", Kind: fieldInt},
@@ -116,7 +116,7 @@ var factoryBudgetKind = kindSpec{
 		{Attr: "node", JSON: "node", Kind: fieldString},
 		{Attr: "model_providers", JSON: "provider", Kind: fieldString},
 		{Attr: "repository", JSON: "repository", Kind: fieldString},
-		{Attr: "unit", JSON: "unit", Kind: fieldString},
+		{Attr: "unit", JSON: "unit", Kind: fieldString, Default: "\"tokens\""},
 		{Attr: "window", JSON: "window", Kind: fieldString},
 		{Attr: "workflow", JSON: "workflow", Kind: fieldString},
 	},

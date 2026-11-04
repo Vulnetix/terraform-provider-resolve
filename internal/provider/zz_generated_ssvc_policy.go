@@ -262,10 +262,10 @@ var ssvcPolicyKind = kindSpec{
 		}
 	},
 	Fields: []field{
-		{Attr: "automatable", JSON: "automatable", Kind: fieldString},
+		{Attr: "automatable", JSON: "automatable", Kind: fieldString, Default: "\"cvss \\u003e= 9.0 || epss \\u003e= 0.7\""},
 		{Attr: "exploitation", JSON: "exploitation", Kind: fieldObject, Children: []field{
-			{Attr: "active", JSON: "active", Kind: fieldString},
-			{Attr: "poc", JSON: "poc", Kind: fieldString},
+			{Attr: "active", JSON: "active", Kind: fieldString, Default: "\"kev || exploitMaturity in ['active', 'weaponized']\""},
+			{Attr: "poc", JSON: "poc", Kind: fieldString, Default: "\"exploitMaturity == 'poc' || exploitCount \\u003e 0\""},
 		}},
 		{Attr: "mapping", JSON: "mapping", Kind: fieldListObject, Children: []field{
 			{Attr: "automatable", JSON: "automatable", Kind: fieldSet, Elem: fieldString},
@@ -275,27 +275,27 @@ var ssvcPolicyKind = kindSpec{
 			{Attr: "technical_impact", JSON: "technicalImpact", Kind: fieldSet, Elem: fieldString},
 		}},
 		{Attr: "mission_well_being", JSON: "missionWellBeing", Kind: fieldObject, Children: []field{
-			{Attr: "critical", JSON: "critical", Kind: fieldString},
-			{Attr: "high", JSON: "high", Kind: fieldString},
-			{Attr: "low", JSON: "low", Kind: fieldString},
-			{Attr: "medium", JSON: "medium", Kind: fieldString},
-			{Attr: "unclassified", JSON: "unclassified", Kind: fieldString},
+			{Attr: "critical", JSON: "critical", Kind: fieldString, Default: "\"high\""},
+			{Attr: "high", JSON: "high", Kind: fieldString, Default: "\"high\""},
+			{Attr: "low", JSON: "low", Kind: fieldString, Default: "\"low\""},
+			{Attr: "medium", JSON: "medium", Kind: fieldString, Default: "\"medium\""},
+			{Attr: "unclassified", JSON: "unclassified", Kind: fieldString, Default: "\"medium\""},
 		}},
 		{Attr: "outcomes", JSON: "outcomes", Kind: fieldObject, Children: []field{
 			{Attr: "act", JSON: "act", Kind: fieldObject, Children: []field{
-				{Attr: "due_days", JSON: "dueDays", Kind: fieldInt},
+				{Attr: "due_days", JSON: "dueDays", Kind: fieldInt, Default: "0"},
 				{Attr: "priority", JSON: "priority", Kind: fieldString},
 			}},
 			{Attr: "attend", JSON: "attend", Kind: fieldObject, Children: []field{
-				{Attr: "due_days", JSON: "dueDays", Kind: fieldInt},
+				{Attr: "due_days", JSON: "dueDays", Kind: fieldInt, Default: "0"},
 				{Attr: "priority", JSON: "priority", Kind: fieldString},
 			}},
 			{Attr: "track", JSON: "track", Kind: fieldObject, Children: []field{
-				{Attr: "due_days", JSON: "dueDays", Kind: fieldInt},
+				{Attr: "due_days", JSON: "dueDays", Kind: fieldInt, Default: "0"},
 				{Attr: "priority", JSON: "priority", Kind: fieldString},
 			}},
 			{Attr: "track_star", JSON: "trackStar", Kind: fieldObject, Children: []field{
-				{Attr: "due_days", JSON: "dueDays", Kind: fieldInt},
+				{Attr: "due_days", JSON: "dueDays", Kind: fieldInt, Default: "0"},
 				{Attr: "priority", JSON: "priority", Kind: fieldString},
 			}},
 		}},
@@ -304,7 +304,7 @@ var ssvcPolicyKind = kindSpec{
 			{Attr: "outcome", JSON: "outcome", Kind: fieldString},
 			{Attr: "when", JSON: "when", Kind: fieldString},
 		}},
-		{Attr: "technical_impact", JSON: "technicalImpact", Kind: fieldString},
+		{Attr: "technical_impact", JSON: "technicalImpact", Kind: fieldString, Default: "\"cvss \\u003e= 9.0 || malicious\""},
 	},
 }
 

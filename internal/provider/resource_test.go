@@ -124,7 +124,8 @@ resource "vulnetix_quality_gate" "gate" {
 			},
 			{
 				// Import reads every field the server holds, including the
-				// ones no configuration set.
+				// ones no configuration set, except a value equal to its
+				// schema default (eol.severities), which reads as unset.
 				ResourceName:  "vulnetix_quality_gate.gate",
 				ImportState:   true,
 				ImportStateId: "default",
@@ -136,10 +137,14 @@ resource "vulnetix_quality_gate" "gate" {
 					for k, want := range map[string]string{
 						"id": "default", "name": "default", "severity": "critical",
 						"version_lag": "3", "block_malware": "true", "cooldown_days": "7",
-						"eol.severities.retired": "critical", "eol.severities.within_30_days": "high",
 					} {
 						if a[k] != want {
 							return fmt.Errorf("imported %s = %q, want %q (all: %v)", k, a[k], want, a)
+						}
+					}
+					for _, k := range []string{"eol.severities.retired", "eol.severities.within_30_days"} {
+						if v, ok := a[k]; ok && v != "" {
+							return fmt.Errorf("imported the schema default %s = %q (all: %v)", k, v, a)
 						}
 					}
 					return nil

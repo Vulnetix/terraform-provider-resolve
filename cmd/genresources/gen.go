@@ -374,7 +374,7 @@ func (g *generator) property(attrs, fields *bytes.Buffer, tree *[]hfield, prop *
 				head += "Sensitive: true,\n"
 			}
 			fmt.Fprintf(attrs, "%q: schema.%s{\n%s%s},\n", attr, scalarAttr(ek), head, scalarValidators(r, ek))
-			fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: %s},\n", attr, jsonName, ek)
+			fmt.Fprintf(fields, "{Attr: %q, JSON: %q, Kind: %s%s},\n", attr, jsonName, ek, defaultLiteral(r))
 			*tree = append(*tree, hfield{Attr: attr, JSON: jsonName, Shape: shapeScalar, Elem: ek})
 			return nil
 		}
@@ -551,6 +551,25 @@ func sizeValidators(n *node, coll string) string {
 		return ""
 	}
 	return "Validators: []validator." + coll + "{\n" + strings.Join(vs, ",\n") + ",\n},\n"
+}
+
+// defaultLiteral is the field's schema default as a Default argument of the
+// field literal, the default JSON-encoded, or nothing when the schema has no
+// scalar default. The provider uses it on import (convert.go, fromSpec).
+func defaultLiteral(n *node) string {
+	if n.Default == nil {
+		return ""
+	}
+	switch n.Default.(type) {
+	case string, bool, float64, int, int64, json.Number:
+	default:
+		return ""
+	}
+	b, err := json.Marshal(n.Default)
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf(", Default: %q", string(b))
 }
 
 // describe is the attribute's documentation: the schema description plus

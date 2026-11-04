@@ -129,7 +129,7 @@ var messagingConnectionKind = kindSpec{
 			{Attr: "email", JSON: "email", Kind: fieldString},
 			{Attr: "site_url", JSON: "siteUrl", Kind: fieldString},
 		}},
-		{Attr: "paused", JSON: "paused", Kind: fieldBool},
+		{Attr: "paused", JSON: "paused", Kind: fieldBool, Default: "false"},
 		{Attr: "slack", JSON: "slack", Kind: fieldObject, Children: []field{
 			{Attr: "channel_id", JSON: "channelId", Kind: fieldString},
 			{Attr: "channel_name", JSON: "channelName", Kind: fieldString},

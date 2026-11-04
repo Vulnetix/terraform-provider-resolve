@@ -169,10 +169,10 @@ var remediationPolicyKind = kindSpec{
 	},
 	Fields: []field{
 		{Attr: "allowance_days", JSON: "allowanceDays", Kind: fieldObject, Children: []field{
-			{Attr: "critical", JSON: "critical", Kind: fieldInt},
-			{Attr: "high", JSON: "high", Kind: fieldInt},
-			{Attr: "low", JSON: "low", Kind: fieldInt},
-			{Attr: "medium", JSON: "medium", Kind: fieldInt},
+			{Attr: "critical", JSON: "critical", Kind: fieldInt, Default: "0"},
+			{Attr: "high", JSON: "high", Kind: fieldInt, Default: "0"},
+			{Attr: "low", JSON: "low", Kind: fieldInt, Default: "0"},
+			{Attr: "medium", JSON: "medium", Kind: fieldInt, Default: "0"},
 		}},
 		{Attr: "description", JSON: "description", Kind: fieldString},
 		{Attr: "exposure_window_days", JSON: "exposureWindowDays", Kind: fieldInt},
@@ -188,7 +188,7 @@ var remediationPolicyKind = kindSpec{
 			{Attr: "medium", JSON: "medium", Kind: fieldFloat},
 		}},
 		{Attr: "standard", JSON: "standard", Kind: fieldString},
-		{Attr: "suppression_review_max_age_days", JSON: "suppressionReviewMaxAgeDays", Kind: fieldInt},
+		{Attr: "suppression_review_max_age_days", JSON: "suppressionReviewMaxAgeDays", Kind: fieldInt, Default: "365"},
 		{Attr: "threat_window_days", JSON: "threatWindowDays", Kind: fieldInt},
 		{Attr: "triage_threshold_days", JSON: "triageThresholdDays", Kind: fieldInt},
 	},

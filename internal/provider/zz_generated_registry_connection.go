@@ -72,7 +72,7 @@ var registryConnectionKind = kindSpec{
 	},
 	Fields: []field{
 		{Attr: "ecosystem", JSON: "ecosystem", Kind: fieldString},
-		{Attr: "enabled", JSON: "enabled", Kind: fieldBool},
+		{Attr: "enabled", JSON: "enabled", Kind: fieldBool, Default: "true"},
 		{Attr: "scope", JSON: "scope", Kind: fieldSet, Elem: fieldString},
 		{Attr: "secret_wo", JSON: "secret", WriteOnly: true, Version: "secret_wo_version"},
 		{Attr: "secret_wo_version", JSON: "secret", Local: true},

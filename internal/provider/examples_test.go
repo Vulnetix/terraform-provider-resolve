@@ -2,9 +2,11 @@ package provider
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -118,6 +120,19 @@ func exampleSteps(t *testing.T, k kindSpec, providerHCL string, check resource.T
 	for i, addr := range advanced.addrs {
 		advChecks = append(advChecks, resource.TestCheckResourceAttr(addr, "id", advanced.names[i]))
 	}
+	// What the advanced step left in state, for the import steps to compare with.
+	applied := map[string]map[string]string{}
+	advChecks = append(advChecks, func(s *terraform.State) error {
+		for _, addr := range advanced.addrs {
+			rs, ok := s.RootModule().Resources[addr]
+			if !ok || rs.Primary == nil {
+				return fmt.Errorf("%s is not in state", addr)
+			}
+			applied[addr] = maps.Clone(rs.Primary.Attributes)
+		}
+		return nil
+	})
+	defaults := defaultPaths(k.Fields, nil)
 	if check != nil {
 		advChecks = append(advChecks, check)
 	}
@@ -143,14 +158,30 @@ func exampleSteps(t *testing.T, k kindSpec, providerHCL string, check resource.T
 		// A write-only argument and its version are not in the server's answer, so
 		// an import does not know them, nested or not.
 		ignore = append(ignore, writeOnlyPaths(k.Fields, "")...)
+		name := advanced.names[i]
 		steps = append(steps, resource.TestStep{
-			Config:                  providerHCL + advanced.hcl,
-			ConfigVariables:         exampleVars(advanced),
-			ResourceName:            addr,
-			ImportState:             true,
-			ImportStateId:           advanced.names[i],
-			ImportStateVerify:       true,
-			ImportStateVerifyIgnore: ignore,
+			Config:          providerHCL + advanced.hcl,
+			ConfigVariables: exampleVars(advanced),
+			ResourceName:    addr,
+			ImportState:     true,
+			ImportStateId:   name,
+			// Not ImportStateVerify: an import reads a schema default as unset
+			// (fromSpec), and advanced.tf writes some defaults out, so the two
+			// are compared with defaults allowed to be absent on either side.
+			ImportStateCheck: func(states []*terraform.InstanceState) error {
+				for _, st := range states {
+					if st.ID != name {
+						continue
+					}
+					want := flatForImport(applied[addr], ignore, defaults)
+					got := flatForImport(st.Attributes, ignore, defaults)
+					if !maps.EqualFunc(want, got, slices.Equal[[]string]) {
+						return fmt.Errorf("import of %s differs from state:\n%s", name, flatDiff(want, got))
+					}
+					return nil
+				}
+				return fmt.Errorf("no imported object has id %q", name)
+			},
 		})
 	}
 	return steps

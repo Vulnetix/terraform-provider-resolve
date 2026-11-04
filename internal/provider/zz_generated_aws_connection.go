@@ -72,7 +72,7 @@ var awsConnectionKind = kindSpec{
 		}
 	},
 	Fields: []field{
-		{Attr: "advanced_networking", JSON: "advancedNetworking", Kind: fieldBool},
+		{Attr: "advanced_networking", JSON: "advancedNetworking", Kind: fieldBool, Default: "false"},
 		{Attr: "iam_user", JSON: "iamUser", Kind: fieldObject, Children: []field{
 			{Attr: "access_key_id", JSON: "accessKeyId", Kind: fieldString},
 			{Attr: "secret_access_key_wo", JSON: "secretAccessKey", WriteOnly: true, Version: "secret_access_key_wo_version"},

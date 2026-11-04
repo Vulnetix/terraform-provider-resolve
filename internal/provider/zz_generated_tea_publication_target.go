@@ -61,7 +61,7 @@ var teaPublicationTargetKind = kindSpec{
 		{Attr: "credential_wo_version", JSON: "credential", Local: true},
 		{Attr: "description", JSON: "description", Kind: fieldString},
 		{Attr: "root_url", JSON: "rootUrl", Kind: fieldString},
-		{Attr: "suspended", JSON: "suspended", Kind: fieldBool},
+		{Attr: "suspended", JSON: "suspended", Kind: fieldBool, Default: "false"},
 	},
 }
 

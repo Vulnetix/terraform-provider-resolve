@@ -107,7 +107,7 @@ Data sources: [`vulnetix_kinds`](data-sources/kinds), [`vulnetix_ai_models`](dat
 
 Every apply is recorded with the provider's `manager` (`terraform` by default). A GitOps `vulnetix config apply --prune` only deletes objects its own manager owns, so it leaves Terraform's alone, and Terraform cannot delete an object another manager owns.
 
-Most kinds merge a document into the stored object, so a refresh only reads the arguments you set: the server's defaults never show as a diff. Import is the exception and reads every field.
+Most kinds merge a document into the stored object, so a refresh only reads the arguments you set: the server's defaults never show as a diff. Import is the exception and reads every field, except that a value equal to its schema default reads as unset.
 
 ## Secrets
 
@@ -121,6 +121,6 @@ Import any object by its name (`metadata.name`); one-per-tenant kinds are named 
 terraform import vulnetix_quality_gate.default default
 ```
 
-A name the console allowed that the name pattern does not (capitals or spaces, such as `AWS Instances`) still imports and plans: the pattern is checked only for a new name, on create or on a rename. A set argument whose server copy repeats an element exactly reads as one element.
+A name the console allowed that the name pattern does not (capitals or spaces, such as `AWS Instances`) still imports and plans: the pattern is checked only for a new name, on create or on a rename. A set argument whose server copy repeats an element exactly reads as one element. A value equal to its schema default (shown on each argument as "Schema default") imports as unset, so a configuration that leaves defaults out plans clean after an import; one that writes a default out plans a one-off no-op update.
 
 {{ .SchemaMarkdown | trimspace }}

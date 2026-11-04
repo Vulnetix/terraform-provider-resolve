@@ -147,7 +147,7 @@ var widgetKind = kindSpec{
 			{Attr: "purl", JSON: "purl", Kind: fieldString},
 			{Attr: "reason", JSON: "reason", Kind: fieldString},
 		}},
-		{Attr: "severity", JSON: "severity", Kind: fieldString},
+		{Attr: "severity", JSON: "severity", Kind: fieldString, Default: "\"low\""},
 		{Attr: "size", JSON: "size", Kind: fieldInt},
 		{Attr: "tags", JSON: "tags", Kind: fieldList, Elem: fieldString},
 		{Attr: "token_wo", JSON: "token", WriteOnly: true, Version: "token_wo_version"},

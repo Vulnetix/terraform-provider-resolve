@@ -105,16 +105,16 @@ var repositorySettingsKind = kindSpec{
 		{Attr: "autonomy", JSON: "autonomy", Kind: fieldString},
 		{Attr: "criticality", JSON: "criticality", Kind: fieldString},
 		{Attr: "defaults_off", JSON: "defaultsOff", Kind: fieldSet, Elem: fieldString},
-		{Attr: "kanban_mode", JSON: "kanbanMode", Kind: fieldString},
+		{Attr: "kanban_mode", JSON: "kanbanMode", Kind: fieldString, Default: "\"off\""},
 		{Attr: "asset_labels", JSON: "labels", Kind: fieldMap, Elem: fieldString},
 		{Attr: "monthly_token_cap", JSON: "monthlyTokenCap", Kind: fieldInt},
 		{Attr: "owner", JSON: "owner", Kind: fieldObject, Children: []field{
 			{Attr: "kind", JSON: "kind", Kind: fieldString},
 			{Attr: "name", JSON: "name", Kind: fieldString},
 		}},
-		{Attr: "protected_branches", JSON: "protectedBranches", Kind: fieldBool},
+		{Attr: "protected_branches", JSON: "protectedBranches", Kind: fieldBool, Default: "true"},
 		{Attr: "repository", JSON: "repository", Kind: fieldString},
-		{Attr: "tea_publish", JSON: "teaPublish", Kind: fieldBool},
+		{Attr: "tea_publish", JSON: "teaPublish", Kind: fieldBool, Default: "false"},
 	},
 }
 

@@ -58,8 +58,8 @@ var savedSearchKind = kindSpec{
 	},
 	Fields: []field{
 		{Attr: "display_name", JSON: "displayName", Kind: fieldString},
-		{Attr: "mode", JSON: "mode", Kind: fieldString},
-		{Attr: "range_ms", JSON: "rangeMs", Kind: fieldInt},
+		{Attr: "mode", JSON: "mode", Kind: fieldString, Default: "\"dsl\""},
+		{Attr: "range_ms", JSON: "rangeMs", Kind: fieldInt, Default: "86400000"},
 		{Attr: "text", JSON: "text", Kind: fieldString},
 	},
 }

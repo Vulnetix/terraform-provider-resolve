@@ -36,7 +36,7 @@ var serviceAccountKind = kindSpec{
 		}
 	},
 	Fields: []field{
-		{Attr: "role", JSON: "role", Kind: fieldString},
+		{Attr: "role", JSON: "role", Kind: fieldString, Default: "\"member\""},
 	},
 }
 

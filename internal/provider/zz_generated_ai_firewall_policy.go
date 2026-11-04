@@ -257,16 +257,16 @@ var aiFirewallPolicyKind = kindSpec{
 		}},
 		{Attr: "capabilities", JSON: "capabilities", Kind: fieldMapObject, Children: []field{
 			{Attr: "action", JSON: "action", Kind: fieldString},
-			{Attr: "enabled", JSON: "enabled", Kind: fieldBool},
+			{Attr: "enabled", JSON: "enabled", Kind: fieldBool, Default: "true"},
 			{Attr: "family", JSON: "family", Kind: fieldString},
 			{Attr: "list", JSON: "list", Kind: fieldString},
 			{Attr: "patterns", JSON: "patterns", Kind: fieldSet, Elem: fieldString},
-			{Attr: "priority", JSON: "priority", Kind: fieldInt},
+			{Attr: "priority", JSON: "priority", Kind: fieldInt, Default: "100"},
 		}},
 		{Attr: "guardrails", JSON: "guardrails", Kind: fieldSetObject, Children: []field{
 			{Attr: "action", JSON: "action", Kind: fieldString},
 			{Attr: "baseline_id", JSON: "baselineId", Kind: fieldString},
-			{Attr: "enabled", JSON: "enabled", Kind: fieldBool},
+			{Attr: "enabled", JSON: "enabled", Kind: fieldBool, Default: "true"},
 			{Attr: "name", JSON: "name", Kind: fieldString},
 			{Attr: "pattern", JSON: "pattern", Kind: fieldString},
 			{Attr: "priority", JSON: "priority", Kind: fieldInt},
@@ -274,9 +274,9 @@ var aiFirewallPolicyKind = kindSpec{
 			{Attr: "when", JSON: "when", Kind: fieldString},
 		}},
 		{Attr: "hold_policy", JSON: "holdPolicy", Kind: fieldObject, Children: []field{
-			{Attr: "hold_timeout_action", JSON: "holdTimeoutAction", Kind: fieldString},
-			{Attr: "hold_timeout_minutes", JSON: "holdTimeoutMinutes", Kind: fieldInt},
-			{Attr: "hold_unknown", JSON: "holdUnknown", Kind: fieldBool},
+			{Attr: "hold_timeout_action", JSON: "holdTimeoutAction", Kind: fieldString, Default: "\"wait\""},
+			{Attr: "hold_timeout_minutes", JSON: "holdTimeoutMinutes", Kind: fieldInt, Default: "0"},
+			{Attr: "hold_unknown", JSON: "holdUnknown", Kind: fieldBool, Default: "false"},
 		}},
 		{Attr: "models", JSON: "models", Kind: fieldSetObject, Children: []field{
 			{Attr: "action", JSON: "action", Kind: fieldString},
@@ -292,7 +292,7 @@ var aiFirewallPolicyKind = kindSpec{
 			}},
 			{Attr: "slug", JSON: "slug", Kind: fieldString},
 		}},
-		{Attr: "prune", JSON: "prune", Kind: fieldBool},
+		{Attr: "prune", JSON: "prune", Kind: fieldBool, Default: "false"},
 		{Attr: "settings", JSON: "settings", Kind: fieldObject, Children: []field{
 			{Attr: "logs_enabled", JSON: "logsEnabled", Kind: fieldBool},
 		}},

@@ -143,7 +143,7 @@ var apiSpecSourceKind = kindSpec{
 			{Attr: "authorize", JSON: "authorize", Kind: fieldBool},
 			{Attr: "mode", JSON: "mode", Kind: fieldString},
 		}},
-		{Attr: "schedule", JSON: "schedule", Kind: fieldString},
+		{Attr: "schedule", JSON: "schedule", Kind: fieldString, Default: "\"daily\""},
 		{Attr: "source", JSON: "source", Kind: fieldObject, Children: []field{
 			{Attr: "connector", JSON: "connector", Kind: fieldObject, Children: []field{
 				{Attr: "kind", JSON: "kind", Kind: fieldString},

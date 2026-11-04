@@ -107,14 +107,14 @@ var detectionRuleFeedKind = kindSpec{
 		{Attr: "display_name", JSON: "displayName", Kind: fieldString},
 		{Attr: "entries", JSON: "entries", Kind: fieldSetObject, Children: []field{
 			{Attr: "cve", JSON: "cve", Kind: fieldString},
-			{Attr: "disabled", JSON: "disabled", Kind: fieldBool},
+			{Attr: "disabled", JSON: "disabled", Kind: fieldBool, Default: "false"},
 			{Attr: "rule", JSON: "rule", Kind: fieldString},
 			{Attr: "rule_table", JSON: "ruleTable", Kind: fieldString},
 			{Attr: "rule_type", JSON: "ruleType", Kind: fieldString},
 		}},
 		{Attr: "format", JSON: "format", Kind: fieldString},
-		{Attr: "publish", JSON: "publish", Kind: fieldBool},
-		{Attr: "schema_version", JSON: "schemaVersion", Kind: fieldInt},
+		{Attr: "publish", JSON: "publish", Kind: fieldBool, Default: "false"},
+		{Attr: "schema_version", JSON: "schemaVersion", Kind: fieldInt, Default: "1"},
 		{Attr: "selector", JSON: "selector", Kind: fieldObject, Children: []field{
 			{Attr: "when", JSON: "when", Kind: fieldString},
 		}},

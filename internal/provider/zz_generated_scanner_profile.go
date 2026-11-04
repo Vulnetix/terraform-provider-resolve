@@ -57,9 +57,9 @@ var scannerProfileKind = kindSpec{
 	},
 	Fields: []field{
 		{Attr: "custom", JSON: "custom", Kind: fieldList, Elem: fieldString},
-		{Attr: "evidence", JSON: "evidence", Kind: fieldString},
-		{Attr: "scanners", JSON: "scanners", Kind: fieldString},
-		{Attr: "slsa_min", JSON: "slsaMin", Kind: fieldString},
+		{Attr: "evidence", JSON: "evidence", Kind: fieldString, Default: "\"cdx_slsa\""},
+		{Attr: "scanners", JSON: "scanners", Kind: fieldString, Default: "\"minimum\""},
+		{Attr: "slsa_min", JSON: "slsaMin", Kind: fieldString, Default: "\"L3\""},
 	},
 }
 

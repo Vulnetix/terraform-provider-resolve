@@ -103,7 +103,7 @@ var vaultEntryKind = kindSpec{
 		{Attr: "expires_at", JSON: "expiresAt", Kind: fieldString},
 		{Attr: "grants", JSON: "grants", Kind: fieldSetObject, Children: []field{
 			{Attr: "all", JSON: "all", Kind: fieldBool},
-			{Attr: "effect", JSON: "effect", Kind: fieldString},
+			{Attr: "effect", JSON: "effect", Kind: fieldString, Default: "\"allow\""},
 			{Attr: "ids", JSON: "ids", Kind: fieldSet, Elem: fieldString},
 			{Attr: "surface", JSON: "surface", Kind: fieldString},
 		}},

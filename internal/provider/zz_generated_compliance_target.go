@@ -144,13 +144,13 @@ var complianceTargetKind = kindSpec{
 		}
 	},
 	Fields: []field{
-		{Attr: "cadence", JSON: "cadence", Kind: fieldString},
+		{Attr: "cadence", JSON: "cadence", Kind: fieldString, Default: "\"quarterly\""},
 		{Attr: "crypto", JSON: "crypto", Kind: fieldObject, Children: []field{
 			{Attr: "allow", JSON: "allow", Kind: fieldString},
-			{Attr: "applies_to", JSON: "appliesTo", Kind: fieldString},
-			{Attr: "max_violations", JSON: "maxViolations", Kind: fieldInt},
+			{Attr: "applies_to", JSON: "appliesTo", Kind: fieldString, Default: "\"category == 'algorithm'\""},
+			{Attr: "max_violations", JSON: "maxViolations", Kind: fieldInt, Default: "0"},
 		}},
-		{Attr: "enabled", JSON: "enabled", Kind: fieldBool},
+		{Attr: "enabled", JSON: "enabled", Kind: fieldBool, Default: "true"},
 		{Attr: "framework", JSON: "framework", Kind: fieldString},
 		{Attr: "report", JSON: "report", Kind: fieldObject, Children: []field{
 			{Attr: "context", JSON: "context", Kind: fieldString},
@@ -163,7 +163,7 @@ var complianceTargetKind = kindSpec{
 			{Attr: "level", JSON: "level", Kind: fieldInt},
 		}},
 		{Attr: "ssdf", JSON: "ssdf", Kind: fieldObject, Children: []field{
-			{Attr: "min_met", JSON: "minMet", Kind: fieldInt},
+			{Attr: "min_met", JSON: "minMet", Kind: fieldInt, Default: "100"},
 			{Attr: "practices", JSON: "practices", Kind: fieldSet, Elem: fieldString},
 		}},
 	},

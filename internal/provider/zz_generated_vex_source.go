@@ -234,14 +234,14 @@ var vexSourceKind = kindSpec{
 		}
 	},
 	Fields: []field{
-		{Attr: "format", JSON: "format", Kind: fieldString},
+		{Attr: "format", JSON: "format", Kind: fieldString, Default: "\"auto\""},
 		{Attr: "git", JSON: "git", Kind: fieldObject, Children: []field{
 			{Attr: "credential_ref", JSON: "credentialRef", Kind: fieldString},
 			{Attr: "paths", JSON: "paths", Kind: fieldSet, Elem: fieldString},
 			{Attr: "ref", JSON: "ref", Kind: fieldString},
 			{Attr: "url", JSON: "url", Kind: fieldString},
 		}},
-		{Attr: "on_error", JSON: "onError", Kind: fieldString},
+		{Attr: "on_error", JSON: "onError", Kind: fieldString, Default: "\"keep-last\""},
 		{Attr: "path", JSON: "path", Kind: fieldObject, Children: []field{
 			{Attr: "path", JSON: "path", Kind: fieldString},
 		}},
@@ -272,7 +272,7 @@ var vexSourceKind = kindSpec{
 		}},
 		{Attr: "trust", JSON: "trust", Kind: fieldObject, Children: []field{
 			{Attr: "allowed_authors", JSON: "allowedAuthors", Kind: fieldSet, Elem: fieldString},
-			{Attr: "require_signature", JSON: "requireSignature", Kind: fieldBool},
+			{Attr: "require_signature", JSON: "requireSignature", Kind: fieldBool, Default: "false"},
 		}},
 		{Attr: "urls", JSON: "urls", Kind: fieldJSON},
 	},

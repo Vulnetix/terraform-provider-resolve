@@ -132,7 +132,7 @@ var aiProviderKind = kindSpec{
 			{Attr: "name", JSON: "name", Kind: fieldString},
 		}},
 		{Attr: "protocol", JSON: "protocol", Kind: fieldString},
-		{Attr: "server_kind", JSON: "serverKind", Kind: fieldString},
+		{Attr: "server_kind", JSON: "serverKind", Kind: fieldString, Default: "\"openai-compatible\""},
 	},
 }
 

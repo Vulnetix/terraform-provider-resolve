@@ -491,7 +491,7 @@ var campaignKind = kindSpec{
 			{Attr: "email", JSON: "email", Kind: fieldString},
 			{Attr: "login", JSON: "login", Kind: fieldString},
 			{Attr: "principal", JSON: "principal", Kind: fieldString},
-			{Attr: "role", JSON: "role", Kind: fieldString},
+			{Attr: "role", JSON: "role", Kind: fieldString, Default: "\"contributor\""},
 		}},
 		{Attr: "deadline", JSON: "deadline", Kind: fieldString},
 		{Attr: "description", JSON: "description", Kind: fieldString},
@@ -502,7 +502,7 @@ var campaignKind = kindSpec{
 				{Attr: "repos", JSON: "repos", Kind: fieldSet, Elem: fieldString},
 				{Attr: "type", JSON: "type", Kind: fieldString},
 			}},
-			{Attr: "join", JSON: "join", Kind: fieldString},
+			{Attr: "join", JSON: "join", Kind: fieldString, Default: "\"all\""},
 		}},
 		{Attr: "display_name", JSON: "name", Kind: fieldString},
 		{Attr: "owner_email", JSON: "ownerEmail", Kind: fieldString},
@@ -586,7 +586,7 @@ var campaignKind = kindSpec{
 			{Attr: "repos", JSON: "repos", Kind: fieldSet, Elem: fieldString},
 		}},
 		{Attr: "target", JSON: "target", Kind: fieldString},
-		{Attr: "timing", JSON: "timing", Kind: fieldString},
+		{Attr: "timing", JSON: "timing", Kind: fieldString, Default: "\"frozen\""},
 	},
 }
 

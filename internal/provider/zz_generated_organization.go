@@ -50,7 +50,7 @@ var organizationKind = kindSpec{
 	Fields: []field{
 		{Attr: "company_email_domains", JSON: "companyEmailDomains", Kind: fieldSet, Elem: fieldString},
 		{Attr: "display_name", JSON: "displayName", Kind: fieldString},
-		{Attr: "drift_protection", JSON: "driftProtection", Kind: fieldBool},
+		{Attr: "drift_protection", JSON: "driftProtection", Kind: fieldBool, Default: "false"},
 	},
 }
 

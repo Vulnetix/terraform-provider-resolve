@@ -45,7 +45,7 @@ var memberKind = kindSpec{
 	},
 	Fields: []field{
 		{Attr: "email", JSON: "email", Kind: fieldString},
-		{Attr: "role", JSON: "role", Kind: fieldString},
+		{Attr: "role", JSON: "role", Kind: fieldString, Default: "\"member\""},
 	},
 }
 

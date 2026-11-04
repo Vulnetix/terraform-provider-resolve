@@ -42,8 +42,8 @@ var cloudSensorsKind = kindSpec{
 		}
 	},
 	Fields: []field{
-		{Attr: "account", JSON: "account", Kind: fieldString},
-		{Attr: "deploy", JSON: "deploy", Kind: fieldBool},
+		{Attr: "account", JSON: "account", Kind: fieldString, Default: "\"*\""},
+		{Attr: "deploy", JSON: "deploy", Kind: fieldBool, Default: "false"},
 		{Attr: "sources", JSON: "sources", Kind: fieldSet, Elem: fieldString},
 	},
 }

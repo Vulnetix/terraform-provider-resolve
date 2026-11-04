@@ -449,14 +449,14 @@ var messagingRouteKind = kindSpec{
 	Fields: []field{
 		{Attr: "actor_filter", JSON: "actorFilter", Kind: fieldObject, Children: []field{
 			{Attr: "kinds", JSON: "kinds", Kind: fieldSet, Elem: fieldString},
-			{Attr: "mode", JSON: "mode", Kind: fieldString},
+			{Attr: "mode", JSON: "mode", Kind: fieldString, Default: "\"any\""},
 			{Attr: "principals", JSON: "principals", Kind: fieldSet, Elem: fieldString},
 		}},
-		{Attr: "allow_sensitive_webhook", JSON: "allowSensitiveWebhook", Kind: fieldBool},
+		{Attr: "allow_sensitive_webhook", JSON: "allowSensitiveWebhook", Kind: fieldBool, Default: "false"},
 		{Attr: "digest", JSON: "digest", Kind: fieldObject, Children: []field{
 			{Attr: "hour", JSON: "hour", Kind: fieldInt},
 			{Attr: "minutes", JSON: "minutes", Kind: fieldInt},
-			{Attr: "mode", JSON: "mode", Kind: fieldString},
+			{Attr: "mode", JSON: "mode", Kind: fieldString, Default: "\"immediate\""},
 			{Attr: "tiers", JSON: "tiers", Kind: fieldObject, Children: []field{
 				{Attr: "error", JSON: "error", Kind: fieldString},
 				{Attr: "info", JSON: "info", Kind: fieldString},
@@ -466,7 +466,7 @@ var messagingRouteKind = kindSpec{
 			{Attr: "tz", JSON: "tz", Kind: fieldString},
 		}},
 		{Attr: "display_name", JSON: "displayName", Kind: fieldString},
-		{Attr: "enabled", JSON: "enabled", Kind: fieldBool},
+		{Attr: "enabled", JSON: "enabled", Kind: fieldBool, Default: "true"},
 		{Attr: "event_types", JSON: "eventTypes", Kind: fieldSet, Elem: fieldString},
 		{Attr: "filters", JSON: "filters", Kind: fieldObject, Children: []field{
 			{Attr: "findings", JSON: "findings", Kind: fieldObject, Children: []field{
@@ -477,14 +477,14 @@ var messagingRouteKind = kindSpec{
 				{Attr: "epss_threshold", JSON: "epssThreshold", Kind: fieldFloat},
 				{Attr: "exploit_threshold", JSON: "exploitThreshold", Kind: fieldInt},
 				{Attr: "has_exploits", JSON: "hasExploits", Kind: fieldSet, Elem: fieldString},
-				{Attr: "ignore_test", JSON: "ignoreTest", Kind: fieldBool},
+				{Attr: "ignore_test", JSON: "ignoreTest", Kind: fieldBool, Default: "false"},
 				{Attr: "is_eol", JSON: "isEol", Kind: fieldBool},
 				{Attr: "is_exploitable", JSON: "isExploitable", Kind: fieldBool},
 				{Attr: "is_malware", JSON: "isMalware", Kind: fieldBool},
 				{Attr: "is_reachable", JSON: "isReachable", Kind: fieldBool},
-				{Attr: "new_only", JSON: "newOnly", Kind: fieldBool},
-				{Attr: "only_direct", JSON: "onlyDirect", Kind: fieldBool},
-				{Attr: "only_production", JSON: "onlyProduction", Kind: fieldBool},
+				{Attr: "new_only", JSON: "newOnly", Kind: fieldBool, Default: "false"},
+				{Attr: "only_direct", JSON: "onlyDirect", Kind: fieldBool, Default: "false"},
+				{Attr: "only_production", JSON: "onlyProduction", Kind: fieldBool, Default: "false"},
 			}},
 			{Attr: "scope", JSON: "scope", Kind: fieldObject, Children: []field{
 				{Attr: "app_name", JSON: "appName", Kind: fieldString},
@@ -493,8 +493,8 @@ var messagingRouteKind = kindSpec{
 				{Attr: "upload_uuid", JSON: "uploadUuid", Kind: fieldString},
 			}},
 		}},
-		{Attr: "include_pii", JSON: "includePII", Kind: fieldBool},
-		{Attr: "max_per_hour", JSON: "maxPerHour", Kind: fieldInt},
+		{Attr: "include_pii", JSON: "includePII", Kind: fieldBool, Default: "false"},
+		{Attr: "max_per_hour", JSON: "maxPerHour", Kind: fieldInt, Default: "60"},
 		{Attr: "mention_principals", JSON: "mentionPrincipals", Kind: fieldSet, Elem: fieldString},
 		{Attr: "mention_static", JSON: "mentionStatic", Kind: fieldObject, Children: []field{
 			{Attr: "discord", JSON: "discord", Kind: fieldSet, Elem: fieldString},
@@ -504,12 +504,12 @@ var messagingRouteKind = kindSpec{
 			{Attr: "slack", JSON: "slack", Kind: fieldSet, Elem: fieldString},
 			{Attr: "teams", JSON: "teams", Kind: fieldSet, Elem: fieldString},
 		}},
-		{Attr: "min_severity", JSON: "minSeverity", Kind: fieldString},
-		{Attr: "mode", JSON: "mode", Kind: fieldString},
+		{Attr: "min_severity", JSON: "minSeverity", Kind: fieldString, Default: "\"info\""},
+		{Attr: "mode", JSON: "mode", Kind: fieldString, Default: "\"live\""},
 		{Attr: "system_template", JSON: "systemTemplate", Kind: fieldString},
 		{Attr: "targets", JSON: "targets", Kind: fieldSetObject, Children: []field{
 			{Attr: "connection", JSON: "connection", Kind: fieldString},
-			{Attr: "enabled", JSON: "enabled", Kind: fieldBool},
+			{Attr: "enabled", JSON: "enabled", Kind: fieldBool, Default: "true"},
 			{Attr: "options", JSON: "options", Kind: fieldObject, Children: []field{
 				{Attr: "assign_mentions", JSON: "assignMentions", Kind: fieldBool},
 				{Attr: "channel_id", JSON: "channelId", Kind: fieldString},

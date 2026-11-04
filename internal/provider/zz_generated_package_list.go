@@ -66,7 +66,7 @@ var packageListKind = kindSpec{
 		{Attr: "entries", JSON: "entries", Kind: fieldSetObject, Children: []field{
 			{Attr: "purl", JSON: "purl", Kind: fieldString},
 			{Attr: "reason", JSON: "reason", Kind: fieldString},
-			{Attr: "scope", JSON: "scope", Kind: fieldString},
+			{Attr: "scope", JSON: "scope", Kind: fieldString, Default: "\"full\""},
 			{Attr: "when", JSON: "when", Kind: fieldString},
 		}},
 		{Attr: "list", JSON: "list", Kind: fieldString},

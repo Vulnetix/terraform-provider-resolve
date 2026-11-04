@@ -133,10 +133,10 @@ var qualityGateKind = kindSpec{
 		{Attr: "eol", JSON: "eol", Kind: fieldObject, Children: []field{
 			{Attr: "block", JSON: "block", Kind: fieldBool},
 			{Attr: "severities", JSON: "severities", Kind: fieldObject, Children: []field{
-				{Attr: "next_quarter", JSON: "nextQuarter", Kind: fieldString},
-				{Attr: "retired", JSON: "retired", Kind: fieldString},
-				{Attr: "this_quarter", JSON: "thisQuarter", Kind: fieldString},
-				{Attr: "within_30_days", JSON: "within30Days", Kind: fieldString},
+				{Attr: "next_quarter", JSON: "nextQuarter", Kind: fieldString, Default: "\"low\""},
+				{Attr: "retired", JSON: "retired", Kind: fieldString, Default: "\"critical\""},
+				{Attr: "this_quarter", JSON: "thisQuarter", Kind: fieldString, Default: "\"medium\""},
+				{Attr: "within_30_days", JSON: "within30Days", Kind: fieldString, Default: "\"high\""},
 			}},
 		}},
 		{Attr: "exploits", JSON: "exploits", Kind: fieldString},

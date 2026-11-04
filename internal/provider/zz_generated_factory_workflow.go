@@ -305,7 +305,7 @@ var factoryWorkflowKind = kindSpec{
 	Fields: []field{
 		{Attr: "description", JSON: "description", Kind: fieldString},
 		{Attr: "display_name", JSON: "displayName", Kind: fieldString},
-		{Attr: "enabled", JSON: "enabled", Kind: fieldBool},
+		{Attr: "enabled", JSON: "enabled", Kind: fieldBool, Default: "true"},
 		{Attr: "graph", JSON: "graph", Kind: fieldObject, Children: []field{
 			{Attr: "edges", JSON: "edges", Kind: fieldListObject, Children: []field{
 				{Attr: "from", JSON: "from", Kind: fieldString},
@@ -353,7 +353,7 @@ var factoryWorkflowKind = kindSpec{
 				{Attr: "repos", JSON: "repos", Kind: fieldSet, Elem: fieldString},
 			}},
 		}},
-		{Attr: "publish", JSON: "publish", Kind: fieldBool},
+		{Attr: "publish", JSON: "publish", Kind: fieldBool, Default: "true"},
 	},
 }
 

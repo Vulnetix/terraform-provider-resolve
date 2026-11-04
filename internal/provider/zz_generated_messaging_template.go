@@ -212,7 +212,7 @@ var messagingTemplateKind = kindSpec{
 				{Attr: "title", JSON: "title", Kind: fieldString},
 			}},
 			{Attr: "fields", JSON: "fields", Kind: fieldListObject, Children: []field{
-				{Attr: "inline", JSON: "inline", Kind: fieldBool},
+				{Attr: "inline", JSON: "inline", Kind: fieldBool, Default: "false"},
 				{Attr: "label", JSON: "label", Kind: fieldString},
 				{Attr: "value", JSON: "value", Kind: fieldString},
 			}},
@@ -224,7 +224,7 @@ var messagingTemplateKind = kindSpec{
 			{Attr: "summary", JSON: "summary", Kind: fieldString},
 			{Attr: "title", JSON: "title", Kind: fieldString},
 			{Attr: "webhook", JSON: "webhook", Kind: fieldObject, Children: []field{
-				{Attr: "include_payload", JSON: "includePayload", Kind: fieldBool},
+				{Attr: "include_payload", JSON: "includePayload", Kind: fieldBool, Default: "false"},
 			}},
 		}},
 		{Attr: "description", JSON: "description", Kind: fieldString},

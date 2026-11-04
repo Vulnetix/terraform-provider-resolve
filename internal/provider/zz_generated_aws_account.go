@@ -60,8 +60,8 @@ var awsAccountKind = kindSpec{
 	Fields: []field{
 		{Attr: "account_id", JSON: "accountId", Kind: fieldString},
 		{Attr: "account_name", JSON: "accountName", Kind: fieldString},
-		{Attr: "deploy", JSON: "deploy", Kind: fieldBool},
-		{Attr: "enabled", JSON: "enabled", Kind: fieldBool},
+		{Attr: "deploy", JSON: "deploy", Kind: fieldBool, Default: "false"},
+		{Attr: "enabled", JSON: "enabled", Kind: fieldBool, Default: "true"},
 		{Attr: "role_name", JSON: "roleName", Kind: fieldString},
 	},
 }

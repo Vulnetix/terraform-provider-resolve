@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
@@ -248,6 +249,15 @@ func fromSpec(spec map[string]any, typ tftypes.Object, prior tftypes.Value, fiel
 			out[f.Attr] = tftypes.NewValue(at, nil)
 			continue
 		}
+		// Read whole (an import, or an element with no prior), a value the
+		// server filled in from the schema default reads as unset: a
+		// configuration usually leaves defaults out, and keeping them made the
+		// first plan after an import change every one of them. One that wrote
+		// the default out plans a no-op update once.
+		if keepAll && !isSet(nullOr(pv)) && isDefault(raw, f.Default) {
+			out[f.Attr] = tftypes.NewValue(at, nil)
+			continue
+		}
 		v, err := jsonToValue(raw, at, f, nullOr(pv), keepAll)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", f.Attr, err)
@@ -255,6 +265,37 @@ func fromSpec(spec map[string]any, typ tftypes.Object, prior tftypes.Value, fiel
 		out[f.Attr] = v
 	}
 	return out, nil
+}
+
+// isDefault reports whether raw, a value from the server's document, is the
+// schema default def (JSON-encoded, empty for none). Numbers compare by value,
+// so 1, 1.0 and 1e0 are the same default.
+func isDefault(raw any, def string) bool {
+	if def == "" {
+		return false
+	}
+	var want any
+	d := json.NewDecoder(strings.NewReader(def))
+	d.UseNumber()
+	if err := d.Decode(&want); err != nil {
+		return false
+	}
+	switch w := want.(type) {
+	case json.Number:
+		got, err := toBigFloat(raw)
+		if err != nil {
+			return false
+		}
+		wf, _, err := big.ParseFloat(w.String(), 10, 512, big.ToNearestEven)
+		return err == nil && got.Cmp(wf) == 0
+	case string:
+		s, ok := raw.(string)
+		return ok && s == w
+	case bool:
+		b, ok := raw.(bool)
+		return ok && b == w
+	}
+	return false
 }
 
 func jsonToValue(raw any, at tftypes.Type, f field, prior tftypes.Value, keepAll bool) (tftypes.Value, error) {

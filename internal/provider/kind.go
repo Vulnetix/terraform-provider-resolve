@@ -61,4 +61,7 @@ type field struct {
 	Version   string
 	// Local attributes exist only in Terraform, such as <attr>_wo_version.
 	Local bool
+	// Default is a scalar's schema default, JSON-encoded ("\"full\"", "true",
+	// "86400000"), or empty. An import reads a value equal to it as unset.
+	Default string
 }

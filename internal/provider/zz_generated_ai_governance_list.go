@@ -68,11 +68,11 @@ var aiGovernanceListKind = kindSpec{
 	},
 	Fields: []field{
 		{Attr: "action", JSON: "action", Kind: fieldString},
-		{Attr: "enabled", JSON: "enabled", Kind: fieldBool},
+		{Attr: "enabled", JSON: "enabled", Kind: fieldBool, Default: "true"},
 		{Attr: "family", JSON: "family", Kind: fieldString},
 		{Attr: "list", JSON: "list", Kind: fieldString},
 		{Attr: "patterns", JSON: "patterns", Kind: fieldSet, Elem: fieldString},
-		{Attr: "priority", JSON: "priority", Kind: fieldInt},
+		{Attr: "priority", JSON: "priority", Kind: fieldInt, Default: "100"},
 	},
 }
 
