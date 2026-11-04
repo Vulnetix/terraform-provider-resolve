@@ -62,6 +62,15 @@ jobs:
           terraform_wrapper: false
       - name: Test
         run: go test ./...
+      # ghaction-import-gpg imports the key (which starts gpg-agent) and only
+      # then writes allow-preset-passphrase and reloads the agent. When the
+      # reload loses the race, presetting the passphrase fails with "Not
+      # supported <GPG Agent> - no --allow-preset-passphrase" (v1.3.3's first
+      # run). Writing the setting first means the agent starts with it.
+      - name: Let gpg-agent take a preset passphrase
+        run: |
+          install -d -m 700 "$HOME/.gnupg"
+          echo allow-preset-passphrase > "$HOME/.gnupg/gpg-agent.conf"
       - name: Import the signing key
         id: gpg
         uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6
