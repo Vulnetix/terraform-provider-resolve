@@ -24,9 +24,10 @@ resource "vulnetix_runtime_sensor_policy" "engineering_laptops" {
     emails           = ["alice@acme.example", "bob@acme.example"]
     mdm_integrations = ["5e4d3c2b-1a09-4f8e-9d7c-6b5a4f3e2d1c"]
   }
-  mode       = "guard"
-  priority   = 200
-  protection = "hardened"
+  mode            = "guard"
+  priority        = 200
+  protection      = "hardened"
+  update_base_url = "https://mirror.example.com/vulnetix/cli"
   labels = {
     fleet = "laptops"
   }

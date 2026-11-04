@@ -63,9 +63,10 @@ resource "vulnetix_runtime_sensor_policy" "engineering_laptops" {
     emails           = ["alice@acme.example", "bob@acme.example"]
     mdm_integrations = ["5e4d3c2b-1a09-4f8e-9d7c-6b5a4f3e2d1c"]
   }
-  mode       = "guard"
-  priority   = 200
-  protection = "hardened"
+  mode            = "guard"
+  priority        = 200
+  protection      = "hardened"
+  update_base_url = "https://mirror.example.com/vulnetix/cli"
   labels = {
     fleet = "laptops"
   }
@@ -121,6 +122,7 @@ resource "vulnetix_runtime_sensor_policy" "servers_locked" {
 - `mode` (String) monitor: report matches, block nothing. guard: hold a match on a rule safe to block (a request denied, an exec refused, a connection dropped) until a person confirms a block or marks a false positive, or the hold lapses; an action that cannot be undone is never held. enforce: block every match on a block-mode rule, a running process included. In every mode a rule from a feed whose signature does not verify only detects. One of `monitor`, `guard`, `enforce`. Schema default: `monitor`.
 - `priority` (Number) Highest wins when several profiles match a device; ties go to the oldest. Schema default: `100`.
 - `protection` (String) How hard the install resists being stopped or removed on the host. standard: a plain service. hardened: a guard restores a sensor that was stopped, disabled or masked, and the user cannot stop it unless allowUserStop. locked: as hardened, and uninstalling needs a one-time code from the console. One of `standard`, `hardened`, `locked`. Schema default: `hardened`.
+- `update_base_url` (String) An https mirror of the sensor's release layout (<base>/latest redirecting to <base>/tag/<tag>, and <base>/download/<tag>/checksums.txt with the binaries) for hosts that cannot reach GitHub. Absent: GitHub. Credentials in the URL are refused; a pinned release signing key still applies to a mirror.
 
 ### Read-Only
 
