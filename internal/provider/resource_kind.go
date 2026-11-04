@@ -50,6 +50,7 @@ const privateImported = "imported"
 var (
 	_ resource.ResourceWithConfigure   = (*kindResource)(nil)
 	_ resource.ResourceWithImportState = (*kindResource)(nil)
+	_ resource.ResourceWithModifyPlan  = (*kindResource)(nil)
 )
 
 // kindResource is the resource for one config kind. Every kind uses this
@@ -84,14 +85,10 @@ func (r *kindResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 			PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 		}
 	} else {
+		// The name pattern is checked in ModifyPlan, for new names only: the
+		// console allows names the pattern does not ("AWS Instances"), and an
+		// object that already has one must still import and plan.
 		v := []validator.String{stringvalidator.LengthAtMost(63)}
-		if r.spec.NamePattern != "" {
-			msg := "must match " + r.spec.NamePattern
-			if r.spec.NamePattern == commonNamePattern {
-				msg = "must be lower case letters, digits and hyphens, starting and ending with a letter or digit"
-			}
-			v = append(v, stringvalidator.RegexMatches(regexp.MustCompile(r.spec.NamePattern), msg))
-		}
 		attrs[attrName] = schema.StringAttribute{
 			MarkdownDescription: "The object's name (`metadata.name`), unique per kind within the tenant. Changing it replaces the object.",
 			Required:            true,
@@ -348,4 +345,40 @@ func (r *kindResource) ImportState(ctx context.Context, req resource.ImportState
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root(attrName), req.ID)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root(attrID), req.ID)...)
 	resp.Diagnostics.Append(resp.Private.SetKey(ctx, privateImported, []byte("true"))...)
+}
+
+// namePatternMessage is the error for a name that does not match the kind's
+// pattern.
+func (r *kindResource) namePatternMessage() string {
+	if r.spec.NamePattern == commonNamePattern {
+		return "must be lower case letters, digits and hyphens, starting and ending with a letter or digit"
+	}
+	return "must match " + r.spec.NamePattern
+}
+
+// ModifyPlan checks a name against the kind's pattern when the name is new:
+// on create, or when a rename replaces the object. A name the object already
+// has on the server is left alone, because the console accepts names the
+// pattern refuses, and refusing them would make those objects impossible to
+// import or plan.
+func (r *kindResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if r.spec.Singleton || r.spec.NamePattern == "" || req.Plan.Raw.IsNull() {
+		return
+	}
+	var name types.String
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root(attrName), &name)...)
+	if resp.Diagnostics.HasError() || name.IsNull() || name.IsUnknown() {
+		return
+	}
+	if !req.State.Raw.IsNull() {
+		var prior types.String
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root(attrName), &prior)...)
+		if resp.Diagnostics.HasError() || prior.ValueString() == name.ValueString() {
+			return
+		}
+	}
+	if !regexp.MustCompile(r.spec.NamePattern).MatchString(name.ValueString()) {
+		resp.Diagnostics.AddAttributeError(path.Root(attrName), "Invalid name",
+			fmt.Sprintf("name %q %s.", name.ValueString(), r.namePatternMessage()))
+	}
 }

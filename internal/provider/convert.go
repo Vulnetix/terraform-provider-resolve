@@ -302,6 +302,14 @@ func jsonToValue(raw any, at tftypes.Type, f field, prior tftypes.Value, keepAll
 			if err != nil {
 				return tftypes.Value{}, err
 			}
+			if (f.Kind == fieldSet || f.Kind == fieldSetObject) && containsValue(vals, v) {
+				// A set cannot hold the same element twice, and Terraform
+				// refuses a value that does ("Duplicate Set Element"), which
+				// made an object whose server copy repeats an element
+				// unreadable. The server matches these elements by their
+				// fields, so an exact repeat is the same element: keep one.
+				continue
+			}
 			vals = append(vals, v)
 		}
 		return tftypes.NewValue(at, vals), nil
@@ -427,4 +435,14 @@ func toBigFloat(raw any) (*big.Float, error) {
 		return big.NewFloat(f), nil
 	}
 	return nil, fmt.Errorf("expected a number, got %T", raw)
+}
+
+// containsValue reports whether vals already holds a value equal to v.
+func containsValue(vals []tftypes.Value, v tftypes.Value) bool {
+	for _, x := range vals {
+		if x.Equal(v) {
+			return true
+		}
+	}
+	return false
 }

@@ -8,6 +8,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/vulnetix/terraform-provider-resolve/internal/client"
 )
 
 func spec(t *testing.T, put map[string]any) map[string]any {
@@ -440,5 +442,54 @@ resource "vulnetix_quality_gate" "gate" {
 				t.Error("a request was made with conflicting credentials")
 			}
 		})
+	}
+}
+
+// The name pattern holds for a new name only. The console allows names it
+// refuses ("AWS Instances"), and such an object must still import and plan
+// with no change; a create or a rename to such a name is refused.
+func TestNamePatternOnlyForNewNames(t *testing.T) {
+	f, srv := newFakeAPI(t)
+	f.objects["Widget/AWS Instances"] = client.Document{
+		APIVersion: "vulnetix.com/v1", Kind: "Widget",
+		Metadata: client.Metadata{Name: "AWS Instances"},
+		Spec:     map[string]any{"color": "red"},
+	}
+	cfg := func(name, extra string) string {
+		return providerBlock(srv.URL) + fmt.Sprintf(`
+resource "vulnetix_widget" "w" {
+  name  = %q
+  color = "red"
+}
+%s`, name, extra)
+	}
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config:      cfg("Bad Name", ""),
+				ExpectError: regexp.MustCompile(`lower case letters, digits and hyphens`),
+			},
+			{
+				Config: cfg("AWS Instances", `
+import {
+  to = vulnetix_widget.w
+  id = "AWS Instances"
+}
+`),
+				Check: resource.TestCheckResourceAttr("vulnetix_widget.w", "id", "AWS Instances"),
+			},
+			{
+				Config:   cfg("AWS Instances", ""),
+				PlanOnly: true,
+			},
+			{
+				Config:      cfg("Other Name", ""),
+				ExpectError: regexp.MustCompile(`lower case letters, digits and hyphens`),
+			},
+		},
+	})
+	if n := f.putCount(); n != 0 {
+		t.Fatalf("%d PUTs; importing an existing object must not write it", n)
 	}
 }

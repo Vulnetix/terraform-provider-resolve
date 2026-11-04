@@ -171,6 +171,8 @@ terraform import vulnetix_jail_policy.payments_api payments-api
 
 Each resource's `import.sh` beside its examples has the command for its example object.
 
+A name the console allowed that the name pattern does not (capitals or spaces, such as `AWS Instances`) still imports and plans: the pattern is checked only for a new name, on create or on a rename. A set argument whose server copy repeats an element exactly reads as one element.
+
 ## How state is read
 
 Most kinds merge a document into the stored object, and the tenant's row can hold values the configuration never set. So a refresh only reads the arguments you manage: an argument removed from the configuration stops being managed and keeps its last server value. Only these kinds merge: AiFirewallPolicy, AiProvider, AwsAccount, AwsConnection, CloudSensors, JailExemption, JailPolicy, Organization, PackageFirewallPolicy, PackageList and QualityGate. Every other kind is wholly declared and is replaced instead, so a removed argument goes back to its default. Import reads every field the server holds.
