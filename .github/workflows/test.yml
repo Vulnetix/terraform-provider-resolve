@@ -17,13 +17,13 @@ jobs:
       # Big Go builds overflow the runner's small /tmp; build in the job's temp.
       - name: Use the job temp dir for Go
         run: echo "GOTMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
-      - uses: actions/checkout@v5.1.0
-      - uses: actions/setup-go@v6.5.0
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
         with:
           go-version-file: go.mod
       # The resource tests drive a real terraform binary against an
       # in-process fake of the config API. Write-only arguments need 1.11+.
-      - uses: hashicorp/setup-terraform@v3.1.2
+      - uses: hashicorp/setup-terraform@v4.0.1
         with:
           terraform_version: '~1.11'
           terraform_wrapper: false
@@ -74,18 +74,18 @@ jobs:
       - name: Use the job temp dir for Go
         if: steps.secrets.outputs.ok == 'true'
         run: echo "GOTMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
-      - uses: actions/checkout@v5.1.0
+      - uses: actions/checkout@v7.0.1
         if: steps.secrets.outputs.ok == 'true'
-      - uses: actions/setup-go@v6.5.0
+      - uses: actions/setup-go@v7.0.0
         if: steps.secrets.outputs.ok == 'true'
         with:
           go-version-file: go.mod
-      - uses: hashicorp/setup-terraform@v3.1.2
+      - uses: hashicorp/setup-terraform@v4.0.1
         if: steps.secrets.outputs.ok == 'true' && matrix.tool == 'terraform'
         with:
           terraform_version: '~1.11'
           terraform_wrapper: false
-      - uses: opentofu/setup-opentofu@v1.0.8
+      - uses: opentofu/setup-opentofu@v2.0.2
         if: steps.secrets.outputs.ok == 'true' && matrix.tool == 'opentofu'
         with:
           tofu_version: '~1.11'
